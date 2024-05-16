@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "diario-oficial"
+version = "0.1.0"
+description = "Módulo para raspagem de dados do Diário Oficial do Estado da Bahia"
+authors = ["Diogo Caribé <dogosousa@gmail.com>"]
+readme = "README.md"
+packages = [{include = "diario_oficial"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+bs4 = "^0.0.2"
+requests = "^2.31.0"
+selenium = "^4.20.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
