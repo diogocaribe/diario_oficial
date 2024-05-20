@@ -1,18 +1,22 @@
-from bs4 import BeautifulSoup
-import requests
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 
 class DiarioOficialBa:
     def __init__(self) -> None:
         self.site_link = "https://dool.egba.ba.gov.br/"
+        self.navegador = webdriver.Chrome()
+
         self.site_map = {}
 
-    def site(self):
-        response = requests.get(self.site_link, verify=False)
-        content = response.content
-        site = BeautifulSoup(content, "html.parser")
+    def abrir_site(self):
+        self.navegador.get(self.site_link)
+        
 
-        return site
+    def clicar_versao_html(self):
+        self.navegador.find_element(By.ID, 'downloadHTML')
+        
 
     def clicar_splashscreen(self):
         pass
@@ -21,4 +25,4 @@ class DiarioOficialBa:
         pass
 
 
-DiarioOficialBa()
+diario_oficial = DiarioOficialBa()
