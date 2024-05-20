@@ -1,9 +1,11 @@
-import time
+"""Codigo para raspar dados do DOE."""
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 
 class DiarioOficialBa:
+    """_summary_
+    """
     def __init__(self) -> None:
         self.site_link = "https://dool.egba.ba.gov.br/"
         self.navegador = webdriver.Chrome()
@@ -11,18 +13,23 @@ class DiarioOficialBa:
         self.site_map = {}
 
     def abrir_site(self):
+        """_summary_
+        """
         self.navegador.get(self.site_link)
-        
 
     def clicar_versao_html(self):
-        self.navegador.find_element(By.ID, 'downloadHTML')
-        
+        """_summary_
+        """
+        self.navegador.find_element(By.ID, "downloadHTML")
 
     def clicar_splashscreen(self):
-        pass
+        """_summary_
+        """
+
 
     def definir_data(self):
-        pass
+        """_summary_
+        """
 
 
 diario_oficial = DiarioOficialBa()
