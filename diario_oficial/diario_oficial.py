@@ -67,15 +67,17 @@ driver.find_element(By.CLASS_NAME, "modal-footer").find_element(
 
 # Clicando na primeiro elemento para expandir o sumário lateral (folder)
 # EXECUTIVO
+# TEM DE CLICAR NA PASTA PARA LOOPAR O CONTEUDO
 driver.find_element(By.CLASS_NAME, "folder").click()
 
-# Clicando na primeiro elemento para expandir o sumário lateral (folder)
-# EXECUTIVO
-# [0] =  EXECUTIVO
-# [1] = LICITAÇÕES
-# [2] = MUNICÍPIOS
-# [3] = 
-driver.find_elements(By.CLASS_NAME, "folder")[0].text
+# Listando todas as pastas que encontram-se em EXECUTIVO
+a = []
+for i in driver.find_elements(By.CLASS_NAME, "folder"):
+    if i.text  != 'LICITAÇÕES':
+        print(i.text)
+        a.append(i)
+    else:
+        break
 
 # Listas todos os elementos de EXECUTIVO
 driver.find_elements(By.CLASS_NAME, "folder")
