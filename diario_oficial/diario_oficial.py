@@ -13,7 +13,7 @@ driver = webdriver.Chrome()
 # Sintaxe do wait
 wdw = WebDriverWait(
     driver,  # webdriver
-    timeout=10,  # tempo de espera pelo erro
+    timeout=60,  # tempo de espera pelo erro
     # poll_frequency=0.5,  # tempo entre uma tentativa e outra
     # ignored_exceptions=None, # Lista de coisas que vamos ignorar
 )
@@ -68,5 +68,18 @@ driver.find_element(By.CLASS_NAME, "modal-footer").find_element(
 # Clicando na primeiro elemento para expandir o sumário lateral (folder)
 # EXECUTIVO
 driver.find_element(By.CLASS_NAME, "folder").click()
+
+# Clicando na primeiro elemento para expandir o sumário lateral (folder)
+# EXECUTIVO
+# [0] =  EXECUTIVO
+# [1] = LICITAÇÕES
+# [2] = MUNICÍPIOS
+# [3] = 
+driver.find_elements(By.CLASS_NAME, "folder")[0].text
+
+# Listas todos os elementos de EXECUTIVO
+driver.find_elements(By.CLASS_NAME, "folder")
+
+time.sleep(60)
 
 time.sleep(60)
