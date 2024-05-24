@@ -25,7 +25,7 @@ driver.find_element(By.ID, "downloadHTML").click()
 
 # Clicar no botão para continuar sem cadastro
 def esperar_elemento(by, elemento, driver):
-    """_summary_
+    """Função para realizar a espera do elemento na tela do navegador.
 
     Args:
         by (_type_): _description_
