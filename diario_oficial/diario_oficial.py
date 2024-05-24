@@ -65,4 +65,8 @@ driver.find_element(By.CLASS_NAME, "modal-footer").find_element(
     By.TAG_NAME, "button"
 ).click()
 
+# Clicando na primeiro elemento para expandir o sumário lateral (folder)
+# EXECUTIVO
+driver.find_element(By.CLASS_NAME, "folder").click()
+
 time.sleep(60)
