@@ -11,7 +11,7 @@ import time
 
 site_link = "https://dool.egba.ba.gov.br/"
 data = "17-05-2024"
-pasta_primeiro_nivel_sumario = ["EXECUTIVO", "LICITAÇÕES"]
+selecao_pasta_nivel_1 = ["EXECUTIVO", "LICITAÇÕES", 'MUNICÍPIOS']
 
 navegador = webdriver.Chrome()
 
@@ -88,76 +88,69 @@ def abrir_pastas(pastas: list):
             i.click()
 
 
-abrir_pastas(pastas=["EXECUTIVO", "LICITAÇÕES"])
+abrir_pastas(pastas=selecao_pasta_nivel_1)
 
 # Abrir o conteúdo de cada pasta
-# Pasta EXECUTIVO
-
-dados = {}
-
-lista_nivel_adm_indireta = []
-lista_licitacao = []
-
-executivo = False
-licitacao = False
-for i in navegador.find_elements(By.CLASS_NAME, "folder"):
-    if i.text == "EXECUTIVO":
-        executivo = True
-        continue
-    if i.text == "LICITAÇÕES":
-        licitacao = True
-        continue
-    if i.text != "" and licitacao is False:
-        lista_nivel_adm_indireta.append(i.text)
-    if i.text != "" and licitacao is True:
-        lista_licitacao.append(i.text)
-
+# lista_nivel_adm_indireta = []
+# lista_licitacao = []
+# executivo = False
+# licitacao = False
+# for i in navegador.find_elements(By.CLASS_NAME, "folder"):
+#     if i.text == "EXECUTIVO":
+#         executivo = True
+#         continue
+#     if i.text == "LICITAÇÕES":
+#         licitacao = True
+#         continue
+#     if i.text != "" and licitacao is False:
+#         lista_nivel_adm_indireta.append(i.text)
+#     if i.text != "" and licitacao is True:
+#         lista_licitacao.append(i.text)
 
 # print(lista_nivel_adm_indireta)
 # print(lista_licitacao)
 
-# Construindo o dicionario da árvore das pastas
-arvore_sumario = {}
-count_nivel_1 = 0
+lista_pasta_nivel_2 = []
+for i in navegador.find_elements(By.CLASS_NAME, "folder"):
+    if i.text not in selecao_pasta_nivel_1 and i.text != "":
+        lista_pasta_nivel_2.append(i.text)
+
+print(lista_pasta_nivel_2)
+
+# Construindo o dicionario da árvore de todas as pastas
+dict_pasta_nivel_2 = {}
 count_nivel_2 = 0
 for i in navegador.find_elements(By.CLASS_NAME, "folder"):
-    print(i.text)
-    if i.text == pasta_primeiro_nivel_sumario[count_nivel_1 + 1]:
-        # Muda para o próximo nível da lista (LICITAÇÕES)
-        count_nivel_1 += 1
-    if i.text == lista_nivel_adm_indireta[count_nivel_2] and i.text != "":
-        if not arvore_sumario:  # se true o dict esta vazio
-            arvore_sumario = {pasta_primeiro_nivel_sumario[count_nivel_1]: {i.text: {}}}
-        elif bool(arvore_sumario):  # se true o dict tem dados nele
-            arvore_sumario[pasta_primeiro_nivel_sumario[count_nivel_1]].update({i.text: {}})
-    if i.text == lista_nivel_adm_indireta[count_nivel_2]:
-        # Muda para o proximo elemento da lista
-        count_nivel_2 += 1
-    if count_nivel_2 == len(lista_nivel_adm_indireta):
-        break
-
-# TODO Fazer o mapeamento no formato dict para o nivel LICITAÇÕES
+    if i.text != "":
+        #  NIVEL 1
+        if i.text in selecao_pasta_nivel_1:
+            # Adicionando o primeiro nivel no dict
+            count_nivel_1 = selecao_pasta_nivel_1.index(i.text)
+            if not dict_pasta_nivel_2:  # testando se o dict esta vazio, se true o dict esta vazio
+                dict_pasta_nivel_2.update({selecao_pasta_nivel_1[count_nivel_1]: {}})
+                continue
+            elif bool(dict_pasta_nivel_2):  # se true o dict tem dados nele
+                dict_pasta_nivel_2.update({selecao_pasta_nivel_1[count_nivel_1]: {}})
+        #  NIVEL 2
+        if i.text in lista_pasta_nivel_2:
+            count_nivel_2 = lista_pasta_nivel_2.index(i.text)
+        if i.text == lista_pasta_nivel_2[count_nivel_2]:
+            if not dict_pasta_nivel_2:  # se true o dict esta vazio
+                dict_pasta_nivel_2 = {selecao_pasta_nivel_1[count_nivel_1]: {i.text: {}}}
+            elif bool(dict_pasta_nivel_2):  # se true o dict tem dados nele
+                dict_pasta_nivel_2[selecao_pasta_nivel_1[count_nivel_1]].update({i.text: {}})
 
 # TODO clicar no nivel 3 dos objetos da arvore
 executivo = False
 licitacao = False
 for i in navegador.find_elements(By.CLASS_NAME, "folder"):
-    if i.text == "EXECUTIVO":
-        executivo = True
-        continue
-    if i.text == "LICITAÇÕES":
-        licitacao = True
-        continue
-    # if i.text != "" and licitacao is False:
-    #     lista_nivel_adm_indireta.append(i.text)
-    # if i.text != "" and licitacao is True:
-    #     lista_licitacao.append(i.text)
-    if i.text != "":
-        print(i.text)
-        try:
-            i.click()
-        except Exception as e:
-            print(e)
+    if i.text not in selecao_pasta_nivel_1:
+        if i.text != "":
+            print(i.text)
+            try:
+                i.click()
+            except Exception as e:
+                print(e)
 
 time.sleep(60)
 
