@@ -161,7 +161,7 @@ for i in navegador.find_elements(By.CLASS_NAME, "folder"):
 
 # print(dict_pasta_nivel_2)
 
-# TODO clicar no nivel 2 das pastas selecionadas
+# Clicando no nivel 2 das pastas selecionadas para abrir o nivel 3
 lista = navegador.find_elements(By.CLASS_NAME, "folder")
 for i in lista:
     # Não clicar nas pastas que já estão abertas no nivel 1
