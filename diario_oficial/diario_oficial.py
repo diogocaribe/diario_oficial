@@ -197,6 +197,9 @@ for i in navegador.find_elements(By.CLASS_NAME, "folder"):
         ):
             lista_pasta_nivel_3.append(i.text)
 
+# TODO Pensar nos links para coletar
+# TODO constuir a adição do nivel 3 do dicionário
+
 time.sleep(60)
 
 page_content = navegador.page_source
