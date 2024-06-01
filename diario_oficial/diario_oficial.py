@@ -194,6 +194,7 @@ lista_pasta_nivel_3 = [
     if i.text != ""
     and i.text not in lista_pasta_nivel_1
     and i.text not in lista_pasta_nivel_2
+    # Todas as pasta nivel 3 tem padrão camel case (ex. Portaria)
     and i.text[1].islower()
 ]
 
