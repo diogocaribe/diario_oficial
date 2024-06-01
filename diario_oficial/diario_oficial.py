@@ -15,11 +15,11 @@ selecao_pasta_nivel_1 = ["EXECUTIVO", "LICITAÇÕES"]
 # TODO implementar a seleção de pastas no nivel 2
 # LIsta de pastas que serão abertas para coleta de dados
 selecao_pasta_nivel_2_executivo = [
-    'DECRETOS FINANCEIROS',
+    "DECRETOS FINANCEIROS",
     # 'PROCURADORIA GERAL DO ESTADO', # ver se consegue tirar a redundancia com LICITAÇÕES
     # "SECRETARIA DO MEIO AMBIENTE",
-    'SECRETARIA DA EDUCAÇÃO',
-    'SECRETARIA DA FAZENDA',
+    "SECRETARIA DA EDUCAÇÃO",
+    "SECRETARIA DA FAZENDA",
 ]
 selecao_pasta_nivel_2_licitacao = ["AVISOS DE LICITAÇÃO"]
 selecao_pasta_nivel_2_municipio = []
@@ -101,12 +101,11 @@ navegador.find_element(By.CLASS_NAME, "modal-footer").find_element(
 
 
 # Listar pastas no nivel 1 do sumário
-lista_pasta_nivel_1 = []
-for i in navegador.find_elements(By.CLASS_NAME, "folder"):
-    if i.text != "":
-        lista_pasta_nivel_1.append(i.text)
+lista_pasta_nivel_1 = [
+    i.text for i in navegador.find_elements(By.CLASS_NAME, "folder") if i.text != ""
+]
 
-print(lista_pasta_nivel_1)
+# print(lista_pasta_nivel_1)
 
 
 # TEM DE CLICAR NA PASTA PARA LOOPAR O CONTEUDO
@@ -127,12 +126,13 @@ def abrir_pastas(pastas: list):
 abrir_pastas(pastas=selecao_pasta_nivel_1)
 
 
-lista_pasta_nivel_2 = []
-for i in navegador.find_elements(By.CLASS_NAME, "folder"):
-    if i.text not in lista_pasta_nivel_1 and i.text != "":
-        lista_pasta_nivel_2.append(i.text)
+lista_pasta_nivel_2 = [
+    i.text
+    for i in navegador.find_elements(By.CLASS_NAME, "folder")
+    if i.text != "" and i.text not in lista_pasta_nivel_1
+]
 
-print(lista_pasta_nivel_2)
+# print(lista_pasta_nivel_2)
 
 # Construindo o dicionario da árvore de todas as pastas
 dict_pasta_nivel_2 = {}
