@@ -187,15 +187,14 @@ for i in lista:
                 print(e)
 
 # Lista nivel 3 das pastas
-lista_pasta_nivel_3 = []
-for i in navegador.find_elements(By.CLASS_NAME, "folder"):
-    if i.text != "":
-        if (
-            i.text not in lista_pasta_nivel_1
-            and i.text not in lista_pasta_nivel_2
-            and i.text[1].islower()
-        ):
-            lista_pasta_nivel_3.append(i.text)
+lista_pasta_nivel_3 = [
+    i.text
+    for i in navegador.find_elements(By.CLASS_NAME, "folder")
+    if i.text != ""
+    and i.text not in lista_pasta_nivel_1
+    and i.text not in lista_pasta_nivel_2
+    and i.text[1].islower()
+]
 
 # TODO Pensar nos links para coletar
 # TODO constuir a adição do nivel 3 do dicionário
