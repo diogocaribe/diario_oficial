@@ -107,6 +107,8 @@ lista_pasta_nivel_1 = [
 
 # print(lista_pasta_nivel_1)
 
+nao_selecao_pasta_nivel_1 = set(lista_pasta_nivel_1) - set(selecao_pasta_nivel_1)
+
 
 # TEM DE CLICAR NA PASTA PARA LOOPAR O CONTEUDO
 # Abrindo as pastas do sumário para acessar o conteúdo
@@ -120,7 +122,10 @@ def abrir_pastas(pastas: list):
     """
     for i in navegador.find_elements(By.CLASS_NAME, "folder"):
         if i.text in pastas:
-            i.click()
+            try:
+                i.click()
+            except Exception as e:
+                print(e)
 
 
 abrir_pastas(pastas=selecao_pasta_nivel_1)
@@ -134,7 +139,7 @@ lista_pasta_nivel_2 = [
 
 # print(lista_pasta_nivel_2)
 
-# Construindo o dicionario da árvore de todas as pastas
+# Construindo o dicionario da árvore de todas as pastas nivel 2
 dict_pasta_nivel_2 = {}
 count_nivel_2 = 0
 for i in navegador.find_elements(By.CLASS_NAME, "folder"):
@@ -170,21 +175,17 @@ for i in navegador.find_elements(By.CLASS_NAME, "folder"):
 # print(dict_pasta_nivel_2)
 
 # Clicando no nivel 2 das pastas selecionadas para abrir o nivel 3
-lista = navegador.find_elements(By.CLASS_NAME, "folder")
-for i in lista:
-    # Não clicar nas pastas que já estão abertas no nivel 1
-    nao_selecao_pasta_nivel_1 = set(lista_pasta_nivel_1) - set(selecao_pasta_nivel_1)
-    if (
-        i.text in lista_pasta_nivel_2
-        and i.text not in (nao_selecao_pasta_nivel_1)
-        # Selecionando as pastas nivel 2 que serão clicadas pelo usuário
-        and i.text in selecao_pasta_nivel_2
-    ):
-        if i.text != "":
-            try:
-                i.click()
-            except Exception as e:
-                print(e)
+lista_toda_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
+lista_pasta_nivel_3_to_click = [
+    i.text
+    for i in lista_toda_elemento_pasta
+    if i.text in lista_pasta_nivel_2 and i.text not in (nao_selecao_pasta_nivel_1)
+    # Selecionando as pastas nivel 2 que serão clicadas pelo usuário
+    and i.text in selecao_pasta_nivel_2 and i.text != ""
+]
+
+abrir_pastas(pastas=lista_pasta_nivel_3_to_click)
+
 
 # Lista nivel 3 das pastas
 lista_pasta_nivel_3 = [
