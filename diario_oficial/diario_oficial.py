@@ -11,8 +11,8 @@ import datetime
 # Primeiro data do diário oficial 05/01/2016??
 
 site_link = "https://dool.egba.ba.gov.br/"
-data_inicial = datetime.date(2024, 1, 3)
-data_final = datetime.date(2024, 1, 3)
+data_inicial = datetime.date(2024, 5, 18)
+data_final = datetime.date(2024, 5, 20)
 selecao_pasta_nivel_1 = ["EXECUTIVO"]  # "LICITAÇÕES"
 # TODO implementar a seleção de pastas no nivel 2
 # LIsta de pastas que serão abertas para coleta de dados
@@ -49,7 +49,7 @@ navegador = webdriver.Chrome()
 wdw = WebDriverWait(
     navegador,  # webdriver
     timeout=60,  # tempo de espera pelo erro
-    # poll_frequency=0.5,  # tempo entre uma tentativa e outra
+    poll_frequency=0.5,  # tempo entre uma tentativa e outra
     # ignored_exceptions=None, # Lista de coisas que vamos ignorar
 )
 # Abrindo a pagina principal do diário oficial
@@ -102,24 +102,51 @@ def abrir_pastas(pastas: list):
                 print(e)
 
 
-while data_inicial <= data_final:
+while data_inicial <= data_final and data_inicial.weekday() != 1:
     data = data_inicial.strftime("%d-%m-%Y")
-    print(data)
+    print(f"Diario oficial: {data}")
 
     # Selecionando a data
+    print("Clear date input")
     navegador.find_element(By.CLASS_NAME, "date-input").clear()
 
-    time.sleep(2)
+    time.sleep(0.5)
     navegador.switch_to.alert.accept()
-
+    print("Send date input")
     navegador.find_element(By.CLASS_NAME, "date-input").send_keys(data)
 
+    print("Click date input")
     navegador.find_element(By.CLASS_NAME, "date-input").click()
 
+    print("Click search button")
     navegador.find_element(By.CLASS_NAME, "fa-search").click()
 
+    try:
+        print("Tratando a edição não existente")
+        time.sleep(2)
+        alert = wdw.until(lambda d: d.switch_to.alert)
+        if alert.text == "Edição não existente!":
+            alert.accept()
+            time.sleep(1)
+            print("Atualizando a pagina")
+            navegador.refresh()
+            time.sleep(1)
+            wdw.until(partial(esperar_elemento, By.CLASS_NAME, "modal-footer"))
+            navegador.find_element(By.CLASS_NAME, "modal-footer").find_element(
+                By.TAG_NAME, "button"
+            ).click()
+            time.sleep(1)
+            print(f"Edição não existe: {data}")
+            if data_inicial == data_final:
+                print("Finalizando o loop")
+                break
+            data_inicial += datetime.timedelta(1)
+            print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
+            continue
+    except Exception:
+        print(f"Edição existente: {data}")
+
     # Janela para seleção de continuar na versão html
-    time.sleep(2)
     wdw.until(partial(esperar_elemento, By.CLASS_NAME, "modal-footer"))
     navegador.find_element(By.CLASS_NAME, "modal-footer").find_element(
         By.TAG_NAME, "button"
@@ -181,7 +208,7 @@ while data_inicial <= data_final:
                         {i.text: {}}
                     )
 
-    # print(dict_pasta_nivel_2)
+    print(dict_pasta_nivel_2)
 
     # Clicando no nivel 2 das pastas selecionadas para abrir o nivel 3
     lista_toda_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
@@ -207,8 +234,10 @@ while data_inicial <= data_final:
     ]
 
     data_inicial += datetime.timedelta(1)
-    print(f"Próxima data: {data_inicial}")
-
+    print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
+    if data_inicial == data_final:
+        print("Finalizando o loop")
+        break
 
 
 # TODO Pensar nos links para coletar
@@ -241,8 +270,8 @@ for i in navegador.find_elements(By.CLASS_NAME, "folder"):
                         {i.text: {}}
                     )
 """
-time.sleep(60)
+# time.sleep(60)
 
-page_content = navegador.page_source
+# page_content = navegador.page_source
 
-site = BeautifulSoup(page_content, "html.parser")
+# site = BeautifulSoup(page_content, "html.parser")
