@@ -13,9 +13,12 @@ import datetime
 site_link = "https://dool.egba.ba.gov.br/"
 data_inicial = datetime.date(2024, 5, 18)
 data_final = datetime.date(2024, 5, 20)
-selecao_pasta_nivel_1 = ["EXECUTIVO"]  # "LICITAÇÕES"
-# TODO implementar a seleção de pastas no nivel 2
+
 # LIsta de pastas que serão abertas para coleta de dados
+# Nível 1
+selecao_pasta_nivel_1 = ["EXECUTIVO"]  # "LICITAÇÕES"
+
+# Nível 2
 selecao_pasta_nivel_2_executivo = [
     # "DECRETOS FINANCEIROS",
     # "SECRETARIA DA ADMINISTRAÇÃO",
@@ -42,6 +45,43 @@ def select_pasta_nivel_2(
 
 
 selecao_pasta_nivel_2 = select_pasta_nivel_2()
+
+
+# Nível 3 - Executivo
+# (Atos e Superintêndencias, Autarquias, Agência, Empresa, Fundação,
+# Diretoria, Centro, Instituto, Companhia, Coordenação, Conselho,
+# Universidade, Hospitais, Policia, Departamento, Outros)
+selecao_pasta_nivel_3_executivo = []
+selecao_pasta_nivel_3_licitacao = []  # "AVISOS DE LICITAÇÃO"
+selecao_pasta_nivel_3_municipio = []
+selecao_pasta_nivel_3_diverso = []
+selecao_pasta_nivel_3_especial = []
+
+
+def select_pasta_nivel_3(
+    lista1=selecao_pasta_nivel_3_executivo,
+    lista2=selecao_pasta_nivel_3_licitacao,
+    lista3=selecao_pasta_nivel_3_municipio,
+    lista4=selecao_pasta_nivel_3_diverso,
+    lista5=selecao_pasta_nivel_3_especial,
+):
+    """Construção da lista de de elementos que serão
+
+    Args:
+        lista1 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_executivo.
+        lista2 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_licitacao.
+        lista3 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_municipio.
+        lista4 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_diverso.
+        lista5 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_especial.
+
+    Returns:
+        _type_: _description_
+    """
+    selecao_pasta_nivel_3 = set(lista1 + lista2 + lista3 + lista4 + lista5)
+    return selecao_pasta_nivel_3
+
+# Separar atos das instituições
+
 
 navegador = webdriver.Chrome()
 
@@ -232,6 +272,34 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
         # Todas as pasta nivel 3 tem padrão camel case (ex. Portaria)
         and i.text[1].islower()
     ]
+
+    # TODO constuir a adição do nivel 3 do dicionário
+
+    dict_pasta_nivel_3 = dict_pasta_nivel_2
+    count_nivel_2 = 0
+    for i in navegador.find_elements(By.CLASS_NAME, "folder"):
+        if i.text != "":
+            #  NIVEL 1
+            if i.text in selecao_pasta_nivel_1:
+                # Adicionando o primeiro nivel no dict
+                count_nivel_1 = selecao_pasta_nivel_1.index(i.text)
+            #  NIVEL 2
+            if i.text in lista_pasta_nivel_2 and i.text in selecao_pasta_nivel_2:
+                count_nivel_2 = lista_pasta_nivel_2.index(i.text)
+            #  NIVEL 3
+            if i.text in lista_pasta_nivel_3:
+                count_nivel_3 = lista_pasta_nivel_3.index(i.text)
+                if i.text == lista_pasta_nivel_3[count_nivel_3]:
+                    if (
+                        not dict_pasta_nivel_3
+                    ):  # se true o dict esta vazio -- TALVEZ ISSO NÃO SEJA NECESSÁRIO
+                        dict_pasta_nivel_2 = {
+                            selecao_pasta_nivel_1[count_nivel_1]: {i.text: {}}
+                        }
+                    elif bool(dict_pasta_nivel_2):  # se true o dict tem dados nele
+                        dict_pasta_nivel_2[selecao_pasta_nivel_1[count_nivel_1]].update(
+                            {i.text: {}}
+                        )
 
     data_inicial += datetime.timedelta(1)
     print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
