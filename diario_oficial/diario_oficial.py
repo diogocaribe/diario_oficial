@@ -292,8 +292,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     count_nivel_1 = 0
     count_nivel_2 = 0
     count_nivel_3 = 0
-
-    lista_adm_indireta = []
+    
     for i in navegador.find_elements(By.CLASS_NAME, "folder"):
         if i.text != "":
             #  NIVEL 1
@@ -347,6 +346,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                         select_dict.update({i.text: []})
                         continue
 
+    lista_adm_indireta = set(lista_pasta_nivel_3) - set(lista_pasta_nivel_3).intersection(set(tipo_ato))
 
     data_inicial += datetime.timedelta(1)
     print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
