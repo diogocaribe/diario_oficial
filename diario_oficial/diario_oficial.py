@@ -86,8 +86,11 @@ def select_pasta_nivel_3(
 # Separar atos das instituições
 tipo_ato = ["Portarias", "Outros"]
 tipo_setor_adm_direta = [
-    "Diretoria", "Superintendência", "Companhia", "Departamento",
-    "Instituto"
+    "Diretoria",
+    "Superintendência",
+    "Companhia",
+    "Departamento",
+    "Instituto",
 ]
 
 navegador = webdriver.Chrome()
@@ -302,26 +305,45 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                 index_nivel_2 = lista_pasta_nivel_2.index(i.text)
                 count_nivel_2 += 1
             #  NIVEL 3
-            if (i.text in lista_pasta_nivel_3):  
+            if i.text in lista_pasta_nivel_3:
                 # Fazer o filtro por atos e depois adicionar autarquias
                 count_nivel_3 = lista_pasta_nivel_3.index(i.text)
                 if u.check_word_or_list_exist_in_list(
                     i.text, tipo_setor_adm_direta
                 ):  # Se verdadeiro é um setor da adm direta
                     print(i.text)
+
                     select_dict = dict_pasta_nivel_3[
                         lista_pasta_nivel_1[index_nivel_1]
-                    ][  # Se true o dict vazio
-                        lista_pasta_nivel_2[index_nivel_2]
-                    ]
+                    ][lista_pasta_nivel_2[index_nivel_2]]
+
                     if not select_dict:  # Se true o dict vazio
                         dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
                             lista_pasta_nivel_2[index_nivel_2]
                         ] = {i.text: {}}
                         continue
-                    elif bool(select_dict):  # Se False dict tem dados
+
+                    if bool(select_dict):  # Se False dict tem dados
                         select_dict.update({i.text: {}})
                         continue
+                if u.check_word_or_list_exist_in_list(
+                    i.text, tipo_ato
+                ):  # Se verdadeiro é uma pasta de atos
+                    print(i.text)
+                    select_dict = dict_pasta_nivel_3[
+                        lista_pasta_nivel_1[index_nivel_1]
+                    ][lista_pasta_nivel_2[index_nivel_2]]
+                    
+                    if not select_dict:  # Se true o dict vazio
+                        dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
+                            lista_pasta_nivel_2[index_nivel_2]
+                        ] = {i.text: []}
+                        continue
+
+                    if bool(select_dict):  # Se False dict tem dados
+                        select_dict.update({i.text: []})
+                        continue
+
 
     data_inicial += datetime.timedelta(1)
     print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
