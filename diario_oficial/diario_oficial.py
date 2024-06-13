@@ -88,12 +88,11 @@ tipo_ato = ["Portarias", "Outros", "Resoluções"]
 tipo_nivel_adm_direta = [
     "Diretoria",
     "Superintendência",
-    "Superintendências"
-    "Companhia",
+    "Superintendências" "Companhia",
     "Departamento",
     "Instituto",
     "Policia",
-    "Corpo"
+    "Corpo",
 ]
 
 navegador = webdriver.Chrome()
@@ -292,7 +291,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     count_nivel_1 = 0
     count_nivel_2 = 0
     count_nivel_3 = 0
-    
+
     for i in navegador.find_elements(By.CLASS_NAME, "folder"):
         if i.text != "":
             #  NIVEL 1
@@ -335,7 +334,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                     select_dict = dict_pasta_nivel_3[
                         lista_pasta_nivel_1[index_nivel_1]
                     ][lista_pasta_nivel_2[index_nivel_2]]
-                    
+
                     if not select_dict:  # Se true o dict vazio
                         dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
                             lista_pasta_nivel_2[index_nivel_2]
@@ -346,7 +345,9 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                         select_dict.update({i.text: []})
                         continue
 
-    lista_adm_indireta = set(lista_pasta_nivel_3) - set(lista_pasta_nivel_3).intersection(set(tipo_ato))
+    lista_adm_indireta = set(lista_pasta_nivel_3) - set(
+        lista_pasta_nivel_3
+    ).intersection(set(tipo_ato))
 
     data_inicial += datetime.timedelta(1)
     print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
