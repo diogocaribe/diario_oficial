@@ -84,13 +84,16 @@ def select_pasta_nivel_3(
 
 
 # Separar atos das instituições
-tipo_ato = ["Portarias", "Outros"]
-tipo_setor_adm_direta = [
+tipo_ato = ["Portarias", "Outros", "Resoluções"]
+tipo_nivel_adm_direta = [
     "Diretoria",
     "Superintendência",
+    "Superintendências"
     "Companhia",
     "Departamento",
     "Instituto",
+    "Policia",
+    "Corpo"
 ]
 
 navegador = webdriver.Chrome()
@@ -309,7 +312,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                 # Fazer o filtro por atos e depois adicionar autarquias
                 count_nivel_3 = lista_pasta_nivel_3.index(i.text)
                 if u.check_word_or_list_exist_in_list(
-                    i.text, tipo_setor_adm_direta
+                    i.text, tipo_nivel_adm_direta
                 ):  # Se verdadeiro é um setor da adm direta
                     print(i.text)
 
