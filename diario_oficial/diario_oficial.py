@@ -1,7 +1,13 @@
-"""Codigo para raspar dados do DOE."""
+"""Codigo para raspar dados do DOE.
+Estruturação dos niveis do diario oficial bahia
+NIVEL 1 = EXECUTIVO, LICITAÇÕES, MUNICÍPIOS, ESPECIAL, DIVERSOS
+NIVEL 2 = SECRETARIA, PROCURADORIA
+NIVEL 3 = Superintendencias,  Diretoria, Superintendência, 
+          Superintendências, Companhia, Departamento, Instituto, Policia, Corpo,
+NIVEL 4 = Atos, Outros
+"""
 
 from functools import partial
-from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -19,7 +25,7 @@ data_final = datetime.date(2024, 3, 13)
 # Nível 1
 selecao_pasta_nivel_1 = ["EXECUTIVO"]  # "LICITAÇÕES"
 
-# Nível 2
+# Nível 2 (Secretarias)
 selecao_pasta_nivel_2_executivo = [
     # "DECRETOS FINANCEIROS",
     "SECRETARIA DE RELAÇÕES INSTITUCIONAIS",
@@ -42,53 +48,31 @@ def select_pasta_nivel_2(
     lista4=selecao_pasta_nivel_2_diverso,
     lista5=selecao_pasta_nivel_2_especial,
 ):
-    selecao_pasta_nivel_2 = set(lista1 + lista2 + lista3 + lista4 + lista5)
-    return selecao_pasta_nivel_2
-
-
-selecao_pasta_nivel_2 = select_pasta_nivel_2()
-
-
-# Nível 3 - Executivo
-# (Atos e Superintêndencias, Autarquias, Agência, Empresa, Fundação,
-# Diretoria, Centro, Instituto, Companhia, Coordenação, Conselho,
-# Universidade, Hospitais, Policia, Departamento, Outros)
-selecao_pasta_nivel_3_executivo = []
-selecao_pasta_nivel_3_licitacao = []
-selecao_pasta_nivel_3_municipio = []
-selecao_pasta_nivel_3_diverso = []
-selecao_pasta_nivel_3_especial = []
-
-
-def select_pasta_nivel_3(
-    lista1=selecao_pasta_nivel_3_executivo,
-    lista2=selecao_pasta_nivel_3_licitacao,
-    lista3=selecao_pasta_nivel_3_municipio,
-    lista4=selecao_pasta_nivel_3_diverso,
-    lista5=selecao_pasta_nivel_3_especial,
-):
-    """Construção da lista de de elementos que serão
+    """Juntando a lista de seleções das pastas.
 
     Args:
-        lista1 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_executivo.
-        lista2 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_licitacao.
-        lista3 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_municipio.
-        lista4 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_diverso.
-        lista5 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_3_especial.
+        lista1 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_executivo.
+        lista2 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_licitacao.
+        lista3 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_municipio.
+        lista4 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_diverso.
+        lista5 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_especial.
 
     Returns:
         _type_: _description_
     """
-    selecao_pasta_nivel_3 = set(lista1 + lista2 + lista3 + lista4 + lista5)
-    return selecao_pasta_nivel_3
+    return set(lista1 + lista2 + lista3 + lista4 + lista5)
 
+
+selecao_pasta_nivel_2 = select_pasta_nivel_2()
 
 # Separar atos das instituições
+
 tipo_ato = ["Portarias", "Outros", "Resoluções"]
-tipo_nivel_adm_direta = [
+tipo_adm_direta = [
     "Diretoria",
     "Superintendência",
-    "Superintendências" "Companhia",
+    "Superintendências",
+    "Companhia",
     "Departamento",
     "Instituto",
     "Policia",
@@ -205,24 +189,24 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
         By.TAG_NAME, "button"
     ).click()
 
+    ######################## NIVEL 1 ########################
     # Listar pastas no nivel 1 do sumário
     lista_pasta_nivel_1 = [
         i.text for i in navegador.find_elements(By.CLASS_NAME, "folder") if i.text != ""
     ]
-
-    # print(lista_pasta_nivel_1)
-
     nao_selecao_pasta_nivel_1 = set(lista_pasta_nivel_1) - set(selecao_pasta_nivel_1)
 
     abrir_pastas(pastas=selecao_pasta_nivel_1)
 
+    #########################################################
+    ######################## NIVEL 2 ########################
+    ###################### SECRETARIA #######################
+    #########################################################
     lista_pasta_nivel_2 = [
         i.text
         for i in navegador.find_elements(By.CLASS_NAME, "folder")
         if i.text != "" and i.text not in lista_pasta_nivel_1
     ]
-
-    # print(lista_pasta_nivel_2)
 
     # Construindo o dicionario da árvore de todas as pastas nivel 2
     dict_pasta_nivel_2 = {}
@@ -263,18 +247,13 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
 
     print(dict_pasta_nivel_2)
 
-    # Clicando no nivel 2 das pastas selecionadas para abrir o nivel 3
-    lista_todo_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
-    lista_pasta_nivel_3_to_click = [
-        i.text
-        for i in lista_todo_elemento_pasta
-        if i.text in lista_pasta_nivel_2 and i.text not in (nao_selecao_pasta_nivel_1)
-        # Selecionando as pastas nivel 2 que serão clicadas pelo usuário
-        and i.text in selecao_pasta_nivel_2 and i.text != ""
-    ]
+    # Clicando nas no nivel 2 (SECRETARIAS)
+    abrir_pastas(pastas=selecao_pasta_nivel_2)
 
-    abrir_pastas(pastas=lista_pasta_nivel_3_to_click)
-
+    #########################################################
+    ######################## NIVEL 3 ########################
+    ############# AUTARQUIAS, SUPERINTENDENCIA ##############
+    #########################################################
     # Lista nivel 3 das pastas
     lista_pasta_nivel_3 = [
         i.text
@@ -286,13 +265,11 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
         and i.text[1].islower()
     ]
 
-    # TODO constuir a adição do nivel 3 do dicionário
-
+    # Construindo o dicionario da árvore de todas as pastas nivel 3
     dict_pasta_nivel_3 = dict_pasta_nivel_2.copy()
     count_nivel_1 = 0
     count_nivel_2 = 0
     count_nivel_3 = 0
-
     for i in navegador.find_elements(By.CLASS_NAME, "folder"):
         if i.text != "":
             #  NIVEL 1
@@ -311,18 +288,14 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                 # Fazer o filtro por atos e depois adicionar autarquias
                 count_nivel_3 = lista_pasta_nivel_3.index(i.text)
                 if u.check_word_or_list_exist_in_list(
-                    i.text, tipo_nivel_adm_direta
+                    i.text, tipo_adm_direta
                 ):  # Se verdadeiro é um setor da adm direta
-                    print(i.text)
-
                     select_dict = dict_pasta_nivel_3[
                         lista_pasta_nivel_1[index_nivel_1]
                     ][lista_pasta_nivel_2[index_nivel_2]]
 
                     if not select_dict:  # Se true o dict vazio
-                        dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
-                            lista_pasta_nivel_2[index_nivel_2]
-                        ] = {i.text: {}}
+                        select_dict = {i.text: {}}
                         continue
 
                     if bool(select_dict):  # Se False dict tem dados
@@ -350,15 +323,15 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
         lista_pasta_nivel_3
     ).intersection(set(tipo_ato))
 
-    lista_todo_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
-    lista_pasta_nivel_4_to_click = [
+    lista_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
+    lista_pasta_nivel_4_to_click = {
         i.text
-        for i in lista_todo_elemento_pasta
+        for i in lista_elemento_pasta
         if i.text in lista_pasta_nivel_3
         and i.text not in lista_pasta_nivel_1
         and i.text not in lista_pasta_nivel_2
         and i.text != ""
-    ]
+    }
 
     abrir_pastas(pastas=lista_pasta_nivel_4_to_click)
 
