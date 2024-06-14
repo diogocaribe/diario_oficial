@@ -26,14 +26,15 @@ data_final = datetime.date(2024, 3, 13)
 selecao_pasta_nivel_1 = ["EXECUTIVO"]  # "LICITAÇÕES"
 
 # Nível 2 (Secretarias)
+# Não adicionar muitas secretarias por que isso causa um bug na renderização da árvore
 selecao_pasta_nivel_2_executivo = [
     # "DECRETOS FINANCEIROS",
-    "SECRETARIA DE RELAÇÕES INSTITUCIONAIS",
+    # "SECRETARIA DE RELAÇÕES INSTITUCIONAIS",
     "SECRETARIA DA ADMINISTRAÇÃO",
     # 'PROCURADORIA GERAL DO ESTADO', # ver se consegue tirar a redundancia com LICITAÇÕES
     "SECRETARIA DO MEIO AMBIENTE",
-     "SECRETARIA DA EDUCAÇÃO",
-    "SECRETARIA DA FAZENDA",
+    "SECRETARIA DA EDUCAÇÃO"
+    # "SECRETARIA DA FAZENDA",
 ]
 selecao_pasta_nivel_2_licitacao = []  # "AVISOS DE LICITAÇÃO"
 selecao_pasta_nivel_2_municipio = []
@@ -319,26 +320,38 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                         select_dict.update({i.text: []})
                         continue
 
-    lista_adm_indireta = set(lista_pasta_nivel_3) - set(
-        lista_pasta_nivel_3
-    ).intersection(set(tipo_ato))
-
+    # Clicando nas no nivel 3 (Autarquias, Superintendencias, Diretorias)
+    abrir_pastas(set(lista_pasta_nivel_3))
+    #########################################################
+    ######################## NIVEL 4 ########################
+    ######################### ATOS ##########################
+    #########################################################
     lista_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
-    lista_pasta_nivel_4_to_click = {
+    lista_nivel_4 = {
         i.text
         for i in lista_elemento_pasta
-        if i.text in lista_pasta_nivel_3
-        and i.text not in lista_pasta_nivel_1
+        if i.text not in lista_pasta_nivel_1
         and i.text not in lista_pasta_nivel_2
+        and i.text not in lista_pasta_nivel_3
         and i.text != ""
     }
 
-    abrir_pastas(pastas=lista_pasta_nivel_4_to_click)
+    lista_nivel_4_ = {
+        i.text
+        for i in lista_elemento_pasta
+        if i.text in tipo_ato
+        and i.text != ""
+    }
 
+    lista_pasta_nivel_4 = lista_nivel_4.union(lista_nivel_4_)
+
+
+    # TODO coletar lista_pasta_nivel_4
+    # TODO separar lista_adm_indireta
+    # TODO separar superintendencias e diretorias que foram coletadas?
+    # TODO Pensar nos links para coletar
     data_inicial += datetime.timedelta(1)
     print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
     if data_inicial == data_final:
         print("Finalizando o loop")
         break
-
-# TODO Pensar nos links para coletar
