@@ -1,43 +1,5 @@
-import collections
 
-
-def deep_update(source, overrides):
-    """
-    Update a nested dictionary or similar mapping.
-    Modify ``source`` in place.
-
-        source = {'hello1': 1}
-        overrides = {'hello2': 2}
-        deep_update(source, overrides)
-        assert source == {'hello1': 1, 'hello2': 2}
-
-        source = {'hello': 'to_override'}
-        overrides = {'hello': 'over'}
-        deep_update(source, overrides)
-        assert source == {'hello': 'over'}
-
-        source = {'hello': {'value': 'to_override', 'no_change': 1}}
-        overrides = {'hello': {'value': 'over'}}
-        deep_update(source, overrides)
-        assert source == {'hello': {'value': 'over', 'no_change': 1}}
-
-        source = {'hello': {'value': 'to_override', 'no_change': 1}}
-        overrides = {'hello': {'value': {}}}
-        deep_update(source, overrides)
-        assert source == {'hello': {'value': {}, 'no_change': 1}}
-
-        source = {'hello': {'value': {}, 'no_change': 1}}
-        overrides = {'hello': {'value': 2}}
-        deep_update(source, overrides)
-        assert source == {'hello': {'value': 2, 'no_change': 1}}
-    """
-    for key, value in overrides.iteritems():
-        if isinstance(value, collections.Mapping) and value:
-            returned = deep_update(source.get(key, {}), value)
-            source[key] = returned
-        else:
-            source[key] = overrides[key]
-    return source
+"""Codigos úteis ao sistema."""
 
 
 def check_word_in_list(word: str, list1: list):
