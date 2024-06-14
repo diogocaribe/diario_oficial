@@ -22,12 +22,12 @@ selecao_pasta_nivel_1 = ["EXECUTIVO"]  # "LICITAÇÕES"
 # Nível 2
 selecao_pasta_nivel_2_executivo = [
     # "DECRETOS FINANCEIROS",
-    # "SECRETARIA DE RELAÇÕES INSTITUCIONAIS",
+    "SECRETARIA DE RELAÇÕES INSTITUCIONAIS",
     "SECRETARIA DA ADMINISTRAÇÃO",
     # 'PROCURADORIA GERAL DO ESTADO', # ver se consegue tirar a redundancia com LICITAÇÕES
     "SECRETARIA DO MEIO AMBIENTE",
-    #  "SECRETARIA DA EDUCAÇÃO",
-    # "SECRETARIA DA FAZENDA",
+     "SECRETARIA DA EDUCAÇÃO",
+    "SECRETARIA DA FAZENDA",
 ]
 selecao_pasta_nivel_2_licitacao = []  # "AVISOS DE LICITAÇÃO"
 selecao_pasta_nivel_2_municipio = []
@@ -149,6 +149,7 @@ def abrir_pastas(pastas: list):
     for i in navegador.find_elements(By.CLASS_NAME, "folder"):
         if i.text in pastas:
             try:
+                time.sleep(0.5)
                 i.click()
             except Exception as e:
                 print(e)
@@ -263,10 +264,10 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     print(dict_pasta_nivel_2)
 
     # Clicando no nivel 2 das pastas selecionadas para abrir o nivel 3
-    lista_toda_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
+    lista_todo_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
     lista_pasta_nivel_3_to_click = [
         i.text
-        for i in lista_toda_elemento_pasta
+        for i in lista_todo_elemento_pasta
         if i.text in lista_pasta_nivel_2 and i.text not in (nao_selecao_pasta_nivel_1)
         # Selecionando as pastas nivel 2 que serão clicadas pelo usuário
         and i.text in selecao_pasta_nivel_2 and i.text != ""
@@ -348,6 +349,18 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     lista_adm_indireta = set(lista_pasta_nivel_3) - set(
         lista_pasta_nivel_3
     ).intersection(set(tipo_ato))
+
+    lista_todo_elemento_pasta = navegador.find_elements(By.CLASS_NAME, "folder")
+    lista_pasta_nivel_4_to_click = [
+        i.text
+        for i in lista_todo_elemento_pasta
+        if i.text in lista_pasta_nivel_3
+        and i.text not in lista_pasta_nivel_1
+        and i.text not in lista_pasta_nivel_2
+        and i.text != ""
+    ]
+
+    abrir_pastas(pastas=lista_pasta_nivel_4_to_click)
 
     data_inicial += datetime.timedelta(1)
     print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
