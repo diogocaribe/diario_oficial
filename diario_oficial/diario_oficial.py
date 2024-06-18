@@ -31,10 +31,10 @@ selecao_pasta_nivel_1 = ["EXECUTIVO"]  # "LICITAÇÕES"
 selecao_pasta_nivel_2_executivo = [
     # "DECRETOS FINANCEIROS",
     # "SECRETARIA DE RELAÇÕES INSTITUCIONAIS",
-    "SECRETARIA DA ADMINISTRAÇÃO",
+    # "SECRETARIA DA ADMINISTRAÇÃO",
     # 'PROCURADORIA GERAL DO ESTADO', # ver se consegue tirar a redundancia com LICITAÇÕES
     "SECRETARIA DO MEIO AMBIENTE",
-    "SECRETARIA DA EDUCAÇÃO",
+    # "SECRETARIA DA EDUCAÇÃO",
     # "SECRETARIA DA FAZENDA",
 ]
 selecao_pasta_nivel_2_licitacao = []  # "AVISOS DE LICITAÇÃO"
@@ -115,6 +115,7 @@ def esperar_elemento(by, elemento, navegador):
     return False
 
 
+# Listar elementos da pagina que tenham nomes diferentes de '' (if i.text != '')
 def listar_elmento(by: By, name: str):
     """Criar lista de elementos que o text não seja ''
 
@@ -126,6 +127,27 @@ def listar_elmento(by: By, name: str):
         _type_: _description_
     """
     return [i for i in navegador.find_elements(by, name) if i.text != ""]
+
+
+def coletar_lista_link_ato():
+    """Função que no ultimo nivel das pastas lista todos os atos.
+
+    Returns:
+        _type_: _description_
+    """
+    i.click()
+    nt = namedtuple("ato", ["nome", "identificador", "link_conteudo"])
+    lista_ato = [
+        nt(
+            i.text,
+            i.get_attribute("identificador"),
+            f"https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/{i.get_attribute('identificador')}",
+        )
+        for i in listar_elmento(By.TAG_NAME, "a")
+        if i.text[0] == "#"
+    ]
+    i.click()
+    return lista_ato
 
 
 # Janela para seleção de continuar na versão html
@@ -316,35 +338,27 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
 
                 if not select_dict:  # Se true o dict vazio
                     # Adicionar
-                    i.click()
-                    nt = namedtuple("ato", ["nome", "identificador", "link_conteudo"])
-                    lista_ato = [
-                        nt(
-                            i.text,
-                            i.get_attribute("identificador"),
-                            f"https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/{i.get_attribute('identificador')}",
-                        )
-                        for i in listar_elmento(By.TAG_NAME, "a")
-                        if i.text[0] == "#"
-                    ]
                     dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
                         lista_pasta_nivel_2[index_nivel_2]
-                    ] = {i.text: lista_ato}
-                    i.click()
+                    ] = {i.text: coletar_lista_link_ato()}
                     continue
 
                 if bool(select_dict):  # Se False dict tem dados
-                    select_dict.update({i.text: []})
+                    # Verificar se vai precisar adicionar a adição do ato nesta parte do codigo
+                    select_dict.update({i.text: coletar_lista_link_ato()})
                     continue
 
     # Clicando nas no nivel 3 (Autarquias, Superintendencias, Diretorias)
+    lista_pasta_clicar = set(lista_pasta_nivel_3) - set(
+        lista_pasta_nivel_3
+    ).intersection(tipo_ato)
     abrir_pastas(set(lista_pasta_nivel_3))
     #########################################################
     ######################## NIVEL 4 ########################
     ######################### ATOS ##########################
     #########################################################
     lista_elemento_pasta = listar_elmento(By.CLASS_NAME, "folder")
-    lista_nivel_4 = {
+    lista_nivel_4_ = {
         i.text
         for i in lista_elemento_pasta
         if i.text not in lista_pasta_nivel_1
@@ -352,15 +366,60 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
         and i.text not in lista_pasta_nivel_3
     }
 
-    lista_nivel_4_ = {i.text for i in lista_elemento_pasta if i.text in tipo_ato}
+    lista_nivel_4__ = {i.text for i in lista_elemento_pasta if i.text in tipo_ato}
 
     # Tive que realizar essa união por causa que a lista_pasta_nivel_3 retirava os ato da lista
-    lista_pasta_nivel_4 = lista_nivel_4.union(lista_nivel_4_)
+    lista_pasta_nivel_4 = lista_nivel_4_.union(lista_nivel_4__)
 
-    # TODO coletar lista_pasta_nivel_4
-    # TODO separar lista_adm_indireta
-    # TODO separar superintendencias e diretorias que foram coletadas?
-    # TODO Pensar nos links para coletar
+    # Construindo o dicionario da árvore de todas as pastas nivel 4
+    dict_pasta_nivel_4 = dict_pasta_nivel_3.copy()
+    count_nivel_1 = 0
+    count_nivel_2 = 0
+    count_nivel_3 = 0
+    count_nivel_4 = 0
+    for i in listar_elmento(By.CLASS_NAME, "folder"):
+        #  NIVEL 1
+        if i.text in selecao_pasta_nivel_1:
+            # Adicionando o primeiro nivel no dict
+            index_nivel_1 = selecao_pasta_nivel_1.index(i.text)
+            count_nivel_1 += 1
+            count_nivel_2 = 0
+            count_nivel_3 = 0
+            count_nivel_4 = 0
+        #  NIVEL 2
+        if i.text in lista_pasta_nivel_2:
+            index_nivel_2 = lista_pasta_nivel_2.index(i.text)
+            count_nivel_2 += 1
+        #  NIVEL 3
+        if i.text in lista_pasta_nivel_3:
+            # Fazer o filtro por atos e depois adicionar autarquias
+            index_nivel_3 = lista_pasta_nivel_3.index(i.text)
+            count_nivel_3 += 1
+        if i.text in lista_pasta_clicar:
+            if u.check_word_or_list_exist_in_list(
+                i.text, tipo_adm_direta
+            ):  # Se verdadeiro é um setor da adm direta
+                index_nivel_4 = list(lista_pasta_clicar).index(i.text)
+                count_nivel_4 += 1
+        if u.check_word_or_list_exist_in_list(i.text, tipo_ato) and count_nivel_4 != 0: # Se verdadeiro é uma pasta de atos
+            print(i.text)
+            select_dict = dict_pasta_nivel_4[lista_pasta_nivel_1[index_nivel_1]][
+                lista_pasta_nivel_2[index_nivel_2]
+            ][list(lista_pasta_clicar)[index_nivel_4]]
+
+            if not select_dict:  # Se true o dict vazio
+                # Adicionar
+                dict_pasta_nivel_4[lista_pasta_nivel_1[index_nivel_1]][
+                    lista_pasta_nivel_2[index_nivel_2]
+                ][list(lista_pasta_clicar)[index_nivel_4]] = {
+                    i.text: coletar_lista_link_ato()
+                }
+                continue
+
+            count_nivel_4 = 0
+
+    print(dict_pasta_nivel_4)
+
     data_inicial += datetime.timedelta(1)
     print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
     if data_inicial == data_final:
