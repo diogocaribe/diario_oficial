@@ -135,6 +135,7 @@ def coletar_lista_link_ato():
     Returns:
         _type_: _description_
     """
+    time.sleep(0.5)
     i.click()
     nt = namedtuple("ato", ["nome", "identificador", "link_conteudo"])
     lista_ato = [
@@ -146,6 +147,7 @@ def coletar_lista_link_ato():
         for i in listar_elmento(By.TAG_NAME, "a")
         if i.text[0] == "#"
     ]
+    time.sleep(0.5)
     i.click()
     return lista_ato
 
@@ -352,7 +354,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     lista_pasta_clicar = set(lista_pasta_nivel_3) - set(
         lista_pasta_nivel_3
     ).intersection(tipo_ato)
-    abrir_pastas(set(lista_pasta_nivel_3))
+    abrir_pastas(set(lista_pasta_clicar))
     #########################################################
     ######################## NIVEL 4 ########################
     ######################### ATOS ##########################
