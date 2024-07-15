@@ -19,8 +19,8 @@ import util as u
 # Primeiro data do diário oficial 05/01/2016??
 
 site_link = "https://dool.egba.ba.gov.br/"
-data_inicial = datetime.date(2024, 3, 13)
-data_final = datetime.date(2024, 3, 13)
+data_inicial = datetime.date(2024, 1, 15)  # 2024, 3, 15 tem um caso especial
+data_final = datetime.date(2024, 3, 15)
 
 # LIsta de pastas que serão abertas para coleta de dados
 # Nível 1
@@ -81,20 +81,6 @@ tipo_adm_direta = [
     "Corpo",
 ]
 
-navegador = webdriver.Chrome()
-
-# Sintaxe do wait
-wdw = WebDriverWait(
-    navegador,  # webdriver
-    timeout=60,  # tempo de espera pelo erro
-    poll_frequency=0.5,  # tempo entre uma tentativa e outra
-    # ignored_exceptions=None, # Lista de coisas que vamos ignorar
-)
-# Abrindo a pagina principal do diário oficial
-navegador.get(site_link)
-
-# Clicar no botão da versão html do diário oficial
-navegador.find_element(By.ID, "downloadHTML").click()
 
 
 # Clicar no botão para continuar sem cadastro
@@ -116,7 +102,7 @@ def esperar_elemento(by, elemento, navegador):
 
 
 # Listar elementos da pagina que tenham nomes diferentes de '' (if i.text != '')
-def listar_elmento(by: By, name: str):
+def listar_elmento(navegador, by: By, name: str):
     """Criar lista de elementos que o text não seja ''
 
     Args:
@@ -129,7 +115,7 @@ def listar_elmento(by: By, name: str):
     return [i for i in navegador.find_elements(by, name) if i.text != ""]
 
 
-def coletar_lista_link_ato():
+def coletar_lista_link_ato(navegador, i):
     """Função que no ultimo nivel das pastas lista todos os atos.
 
     Returns:
@@ -144,7 +130,7 @@ def coletar_lista_link_ato():
             i.get_attribute("identificador"),
             f"https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/{i.get_attribute('identificador')}",
         )
-        for i in listar_elmento(By.TAG_NAME, "a")
+        for i in listar_elmento(navegador, By.TAG_NAME, "a")
         if i.text[0] == "#"
     ]
     time.sleep(0.5)
@@ -152,24 +138,18 @@ def coletar_lista_link_ato():
     return lista_ato
 
 
-# Janela para seleção de continuar na versão html
-wdw.until(partial(esperar_elemento, By.CLASS_NAME, "modal-footer"))
-navegador.find_element(By.CLASS_NAME, "modal-footer").find_element(
-    By.TAG_NAME, "button"
-).click()
-
 
 # TEM DE CLICAR NA PASTA PARA LOOPAR O CONTEUDO
 # Abrindo as pastas do sumário para acessar o conteúdo
 # Primerio nivel de pastas
-def abrir_pastas(pastas: list):
+def abrir_pastas(navegador, pastas: list):
     """Esta função abrirá as pastas de interesse do diário oficial html
 
     Args:
         pastas (list): Opções de nome das pastas ['EXECUTIVO', 'LICITAÇÕES',
         'MUNICÍPIOS', 'DIVERSOS', 'ESPECIAL']
     """
-    for i in listar_elmento(By.CLASS_NAME, "folder"):
+    for i in listar_elmento(navegador, By.CLASS_NAME, "folder"):
         if i.text in pastas:
             try:
                 time.sleep(0.5)
@@ -178,9 +158,41 @@ def abrir_pastas(pastas: list):
                 print(e)
 
 
-while data_inicial <= data_final and data_inicial.weekday() != 1:
-    data = data_inicial.strftime("%d-%m-%Y")
+def coleta_diario_oficial(data: str) -> dict:
+    """Função que coleta os dados sumarizados do diario oficial
+    do Estado da Bahia.
+
+    Args:
+        data (str): Data do diario oficial.
+                    Formato: 'YYYY-MM-DD' 
+
+    Returns:
+        dict: _description_
+    """
+    data = data.strftime("%d-%m-%Y")
     print(f"Diario oficial: {data}")
+    navegador = webdriver.Chrome()
+
+    # Sintaxe do wait
+    wdw = WebDriverWait(
+        navegador,  # webdriver
+        timeout=60,  # tempo de espera pelo erro
+        poll_frequency=0.5,  # tempo entre uma tentativa e outra
+        # ignored_exceptions=None, # Lista de coisas que vamos ignorar
+    )
+
+    # Abrindo a pagina principal do diário oficial
+    navegador.get(site_link)
+
+    # Clicar no botão da versão html do diário oficial
+    navegador.find_element(By.ID, "downloadHTML").click()
+
+    # Janela para seleção de continuar na versão html
+    wdw.until(partial(esperar_elemento, By.CLASS_NAME, "modal-footer"))
+    navegador.find_element(By.CLASS_NAME, "modal-footer").find_element(
+        By.TAG_NAME, "button"
+    ).click()
+
 
     # Selecionando a data
     print("Clear date input")
@@ -198,27 +210,27 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     navegador.find_element(By.CLASS_NAME, "fa-search").click()
 
     try:
-        print("Tratando a edição não existente")
+        # print("Tratando a edição não existente")
         time.sleep(2)
         alert = wdw.until(lambda d: d.switch_to.alert)
         if alert.text == "Edição não existente!":
             alert.accept()
             time.sleep(1)
-            print("Atualizando a pagina")
-            navegador.refresh()
-            time.sleep(1)
-            wdw.until(partial(esperar_elemento, By.CLASS_NAME, "modal-footer"))
-            navegador.find_element(By.CLASS_NAME, "modal-footer").find_element(
-                By.TAG_NAME, "button"
-            ).click()
-            time.sleep(1)
+            # print("Atualizando a pagina")
+            # navegador.refresh()
+            # time.sleep(1)
+            # wdw.until(partial(esperar_elemento, By.CLASS_NAME, "modal-footer"))
+            # navegador.find_element(By.CLASS_NAME, "modal-footer").find_element(
+            #     By.TAG_NAME, "button"
+            # ).click()
+            # time.sleep(1)
             print(f"Edição não existe: {data}")
-            if data_inicial == data_final:
-                print("Finalizando o loop")
-                break
-            data_inicial += datetime.timedelta(1)
-            print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
-            continue
+            # if data == data_final:
+            #     print("Finalizando o loop")
+            #     return
+            # data += datetime.timedelta(1)
+            # print(f"Próxima data: {data.strftime('%d-%m-%Y')}")
+            return
     except Exception:
         print(f"Edição existente: {data}")
 
@@ -230,10 +242,10 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
 
     ######################## NIVEL 1 ########################
     # Listar pastas no nivel 1 do sumário
-    lista_pasta_nivel_1 = [i.text for i in listar_elmento(By.CLASS_NAME, "folder")]
+    lista_pasta_nivel_1 = [i.text for i in listar_elmento(navegador, By.CLASS_NAME, "folder")]
     nao_selecao_pasta_nivel_1 = set(lista_pasta_nivel_1) - set(selecao_pasta_nivel_1)
 
-    abrir_pastas(pastas=selecao_pasta_nivel_1)
+    abrir_pastas(navegador, pastas=selecao_pasta_nivel_1)
 
     #########################################################
     ######################## NIVEL 2 ########################
@@ -241,14 +253,14 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     #########################################################
     lista_pasta_nivel_2 = [
         i.text
-        for i in listar_elmento(By.CLASS_NAME, "folder")
+        for i in listar_elmento(navegador, By.CLASS_NAME, "folder")
         if i.text not in lista_pasta_nivel_1
     ]
 
     # Construindo o dicionario da árvore de todas as pastas nivel 2
     dict_pasta_nivel_2 = {}
     count_nivel_2 = 0
-    for i in listar_elmento(By.CLASS_NAME, "folder"):
+    for i in listar_elmento(navegador, By.CLASS_NAME, "folder"):
         #  NIVEL 1
         if i.text in selecao_pasta_nivel_1:
             # Adicionando o primeiro nivel no dict
@@ -257,7 +269,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                 not dict_pasta_nivel_2
             ):  # testando se o dict esta vazio, se true o dict esta vazio
                 dict_pasta_nivel_2.update({selecao_pasta_nivel_1[count_nivel_1]: {}})
-                continue
+                pass
             if bool(dict_pasta_nivel_2):  # se true o dict tem dados nele
                 dict_pasta_nivel_2.update({selecao_pasta_nivel_1[count_nivel_1]: {}})
         #  NIVEL 2
@@ -280,16 +292,17 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     print(dict_pasta_nivel_2)
 
     # Clicando nas no nivel 2 (SECRETARIAS)
-    abrir_pastas(pastas=selecao_pasta_nivel_2)
+    abrir_pastas(navegador, pastas=selecao_pasta_nivel_2)
 
     #########################################################
     ######################## NIVEL 3 ########################
     ############# AUTARQUIAS, SUPERINTENDENCIA ##############
     #########################################################
     # Lista nivel 3 das pastas
+    print("Construindo pastas nivel 3")
     lista_pasta_nivel_3 = [
         i.text
-        for i in listar_elmento(By.CLASS_NAME, "folder")
+        for i in listar_elmento(navegador, By.CLASS_NAME, "folder")
         if i.text not in lista_pasta_nivel_1 and i.text not in lista_pasta_nivel_2
         # Todas as pasta nivel 3 tem padrão camel case (ex. Portaria)
         and i.text[1].islower()
@@ -300,7 +313,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     count_nivel_1 = 0
     count_nivel_2 = 0
     count_nivel_3 = 0
-    for i in listar_elmento(By.CLASS_NAME, "folder"):
+    for i in listar_elmento(navegador, By.CLASS_NAME, "folder"):
         #  NIVEL 1
         if i.text in selecao_pasta_nivel_1:
             # Adicionando o primeiro nivel no dict
@@ -324,12 +337,15 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                 ]
 
                 if not select_dict:  # Se true o dict vazio
-                    select_dict = {i.text: {}}
-                    continue
+                    dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
+                        lista_pasta_nivel_2[index_nivel_2]
+                    ] = {i.text: {}}
+                    pass
 
+                # Aqui é adicionando o INEMA no dict
                 if bool(select_dict):  # Se False dict tem dados
                     select_dict.update({i.text: {}})
-                    continue
+                    pass
             if u.check_word_or_list_exist_in_list(
                 i.text, tipo_ato
             ):  # Se verdadeiro é uma pasta de atos
@@ -342,24 +358,25 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                     # Adicionar
                     dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
                         lista_pasta_nivel_2[index_nivel_2]
-                    ] = {i.text: coletar_lista_link_ato()}
-                    continue
+                    ] = {i.text: coletar_lista_link_ato(navegador, i)}
+                    pass
 
                 if bool(select_dict):  # Se False dict tem dados
                     # Verificar se vai precisar adicionar a adição do ato nesta parte do codigo
-                    select_dict.update({i.text: coletar_lista_link_ato()})
-                    continue
+                    select_dict.update({i.text: coletar_lista_link_ato(navegador, i)})
+                    pass
 
     # Clicando nas no nivel 3 (Autarquias, Superintendencias, Diretorias)
     lista_pasta_clicar = set(lista_pasta_nivel_3) - set(
         lista_pasta_nivel_3
     ).intersection(tipo_ato)
-    abrir_pastas(set(lista_pasta_clicar))
+    abrir_pastas(navegador, set(lista_pasta_clicar))
     #########################################################
     ######################## NIVEL 4 ########################
     ######################### ATOS ##########################
     #########################################################
-    lista_elemento_pasta = listar_elmento(By.CLASS_NAME, "folder")
+    print("Construindo pastas nivel 4")
+    lista_elemento_pasta = listar_elmento(navegador, By.CLASS_NAME, "folder")
     lista_nivel_4_ = {
         i.text
         for i in lista_elemento_pasta
@@ -379,7 +396,7 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
     count_nivel_2 = 0
     count_nivel_3 = 0
     count_nivel_4 = 0
-    for i in listar_elmento(By.CLASS_NAME, "folder"):
+    for i in listar_elmento(navegador, By.CLASS_NAME, "folder"):
         #  NIVEL 1
         if i.text in selecao_pasta_nivel_1:
             # Adicionando o primeiro nivel no dict
@@ -403,8 +420,11 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
             ):  # Se verdadeiro é um setor da adm direta
                 index_nivel_4 = list(lista_pasta_clicar).index(i.text)
                 count_nivel_4 += 1
-        if u.check_word_or_list_exist_in_list(i.text, tipo_ato) and count_nivel_4 != 0: # Se verdadeiro é uma pasta de atos
+        if (
+            u.check_word_or_list_exist_in_list(i.text, tipo_ato) and count_nivel_4 != 0
+        ):  # Se verdadeiro é uma pasta de atos
             print(i.text)
+
             select_dict = dict_pasta_nivel_4[lista_pasta_nivel_1[index_nivel_1]][
                 lista_pasta_nivel_2[index_nivel_2]
             ][list(lista_pasta_clicar)[index_nivel_4]]
@@ -414,16 +434,16 @@ while data_inicial <= data_final and data_inicial.weekday() != 1:
                 dict_pasta_nivel_4[lista_pasta_nivel_1[index_nivel_1]][
                     lista_pasta_nivel_2[index_nivel_2]
                 ][list(lista_pasta_clicar)[index_nivel_4]] = {
-                    i.text: coletar_lista_link_ato()
+                    i.text: coletar_lista_link_ato(navegador, i)
                 }
-                continue
+                pass
 
             count_nivel_4 = 0
 
     print(dict_pasta_nivel_4)
+    return dict_pasta_nivel_4
 
-    data_inicial += datetime.timedelta(1)
-    print(f"Próxima data: {data_inicial.strftime('%d-%m-%Y')}")
-    if data_inicial == data_final:
-        print("Finalizando o loop")
-        break
+
+while data_inicial <= data_final:
+    coleta_diario_oficial(data=data_inicial)
+    data_inicial += datetime.timedelta(days=1)
