@@ -68,7 +68,6 @@ def select_pasta_nivel_2(
 selecao_pasta_nivel_2 = select_pasta_nivel_2()
 
 # Separar atos das instituições
-
 tipo_ato = ["Portarias", "Outros", "Resoluções"]
 tipo_adm_direta = [
     "Diretoria",
@@ -80,7 +79,6 @@ tipo_adm_direta = [
     "Policia",
     "Corpo",
 ]
-
 
 
 # Clicar no botão para continuar sem cadastro
@@ -138,7 +136,6 @@ def coletar_lista_link_ato(navegador, i):
     return lista_ato
 
 
-
 # TEM DE CLICAR NA PASTA PARA LOOPAR O CONTEUDO
 # Abrindo as pastas do sumário para acessar o conteúdo
 # Primerio nivel de pastas
@@ -164,7 +161,7 @@ def coleta_diario_oficial(data: str) -> dict:
 
     Args:
         data (str): Data do diario oficial.
-                    Formato: 'YYYY-MM-DD' 
+                    Formato: 'YYYY-MM-DD'
 
     Returns:
         dict: _description_
@@ -193,7 +190,6 @@ def coleta_diario_oficial(data: str) -> dict:
         By.TAG_NAME, "button"
     ).click()
 
-
     # Selecionando a data
     print("Clear date input")
     navegador.find_element(By.CLASS_NAME, "date-input").clear()
@@ -216,20 +212,7 @@ def coleta_diario_oficial(data: str) -> dict:
         if alert.text == "Edição não existente!":
             alert.accept()
             time.sleep(1)
-            # print("Atualizando a pagina")
-            # navegador.refresh()
-            # time.sleep(1)
-            # wdw.until(partial(esperar_elemento, By.CLASS_NAME, "modal-footer"))
-            # navegador.find_element(By.CLASS_NAME, "modal-footer").find_element(
-            #     By.TAG_NAME, "button"
-            # ).click()
-            # time.sleep(1)
             print(f"Edição não existe: {data}")
-            # if data == data_final:
-            #     print("Finalizando o loop")
-            #     return
-            # data += datetime.timedelta(1)
-            # print(f"Próxima data: {data.strftime('%d-%m-%Y')}")
             return
     except Exception:
         print(f"Edição existente: {data}")
@@ -242,7 +225,9 @@ def coleta_diario_oficial(data: str) -> dict:
 
     ######################## NIVEL 1 ########################
     # Listar pastas no nivel 1 do sumário
-    lista_pasta_nivel_1 = [i.text for i in listar_elmento(navegador, By.CLASS_NAME, "folder")]
+    lista_pasta_nivel_1 = [
+        i.text for i in listar_elmento(navegador, By.CLASS_NAME, "folder")
+    ]
     nao_selecao_pasta_nivel_1 = set(lista_pasta_nivel_1) - set(selecao_pasta_nivel_1)
 
     abrir_pastas(navegador, pastas=selecao_pasta_nivel_1)
