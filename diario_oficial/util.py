@@ -1,4 +1,3 @@
-
 """Codigos úteis ao sistema."""
 
 

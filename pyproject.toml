@@ -7,15 +7,27 @@ readme = "README.md"
 packages = [{include = "diario_oficial"}]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 bs4 = "^0.0.2"
 requests = "^2.31.0"
 selenium = "^4.20.0"
+pydantic-settings = "^2.3.4"
+sqlalchemy = "2.0.31"
+pandas = "^2.2.2"
+psycopg = "^3.2.1"
+alembic = "^1.13.2"
 
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"
+ruff = "^0.5.2"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "single"
