@@ -24,12 +24,12 @@ from settings import Settings
 # Primeiro data do diário oficial 05/01/2016??
 
 site_link = "https://dool.egba.ba.gov.br/"
-data_inicial = datetime.date(2024, 1, 15)  # 2024, 3, 15 tem um caso especial
+data_inicial = datetime.date(2024, 1, 16)  # 2024, 3, 15 tem um caso especial
 data_final = datetime.date(2024, 1, 16)
 
 
 chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument("--headless")
+# chrome_options.add_argument("--headless")
 
 # LIsta de pastas que serão abertas para coleta de dados
 # Nível 1
@@ -235,6 +235,8 @@ def coleta_diario_oficial(data: str) -> dict:
         By.TAG_NAME, "button"
     ).click()
 
+    # TODO coletar o numero da edição
+    edicao = int(navegador.find_element(By.CLASS_NAME, "text-center").find_element(By.TAG_NAME, "strong").text.split()[-1])
     ######################## NIVEL 1 ########################
     # Listar pastas no nivel 1 do sumário
     lista_pasta_nivel_1 = [
@@ -440,7 +442,7 @@ def coleta_diario_oficial(data: str) -> dict:
     print(dict_pasta_nivel_4)
     return {
         "diario_oficial_json": dict_pasta_nivel_4,
-        "edicao": 12345,
+        "edicao": edicao,
         "data": data,
         "exist": True,
     }
