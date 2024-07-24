@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, JSON, Boolean, Date
-from sqlalchemy.orm import declarative_base
-
+from sqlalchemy import Column, Date
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import JSONB
 Base = declarative_base()
 
 
@@ -17,11 +17,11 @@ class DiarioOficialBruto(Base):
     __table_args__ = {'schema': 'processing'}
     __tablename__ = 'diario_oficial_bruto'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    diario_oficial_json = Column(JSON)
-    data = Column(Date)
-    edicao = Column(Integer)
-    exist = Column(Boolean)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    diario_oficial_json: Mapped[JSONB] = mapped_column(type_=JSONB, nullable=True)
+    data = Column(Date, unique=True)
+    edicao: Mapped[int] = mapped_column(nullable=True, unique=True)
+    exist: Mapped[bool] = mapped_column(nullable=False)
 
     def __repr__(self):
         return f'Dados Diário Oficial Bruto [edicao={self.edicao}, data={self.data}]'
