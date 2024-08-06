@@ -1,7 +1,8 @@
 from sqlalchemy import Column, Date
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
-Base = declarative_base()
+
+from ..configs.base import Base
 
 
 class DiarioOficialBruto(Base):
@@ -14,8 +15,8 @@ class DiarioOficialBruto(Base):
         _type_: _description_
     """
 
-    __table_args__ = {'schema': 'processing'}
     __tablename__ = 'diario_oficial_bruto'
+    __table_args__ = {'schema': 'processing'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     diario_oficial_json: Mapped[JSONB] = mapped_column(type_=JSONB, nullable=True)
