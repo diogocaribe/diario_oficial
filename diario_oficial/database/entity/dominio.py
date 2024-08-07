@@ -13,5 +13,5 @@ class Poder(Base):
     __tablename__ = 'poder'
     __table_args__ = {'schema': 'dominio'}
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     nome: Mapped[str] = mapped_column(nullable=False, unique=True)

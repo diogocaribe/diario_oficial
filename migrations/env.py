@@ -3,13 +3,13 @@ from logging.config import fileConfig
 from alembic import context
 
 from diario_oficial.settings import Settings
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, MetaData
 from sqlalchemy.schema import CreateSchema
 
-import sys
-import os
+# import sys
+# import os
 # Adiciona o diretório raiz do projeto ao sys.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from diario_oficial.database.configs.base import Base
 
@@ -31,7 +31,15 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
-target_metadata = [AtoBruto.metadata, DiarioOficialBruto.metadata, Poder.metadata]
+convention = {
+  "ix": "ix_%(column_0_label)s",
+  "uq": "uq_%(table_name)s_%(column_0_name)s",
+  "ck": "ck_%(table_name)s_%(constraint_name)s",
+  "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+  "pk": "pk_%(table_name)s"
+}
+metadata = MetaData(naming_convention=convention)
+target_metadata = [DiarioOficialBruto.metadata]
 # target_metadata = None
 
 # other values from the config, defined by the needs of env.py,
@@ -84,6 +92,7 @@ def run_migrations_online() -> None:
         # Adicionando o schema que exite no modelo
         # Isso aqui não ficou muito bom.
         connection.execute(CreateSchema("processing", if_not_exists=True))
+        connection.execute(CreateSchema("dominio", if_not_exists=True))
 
         with context.begin_transaction():
             context.run_migrations()

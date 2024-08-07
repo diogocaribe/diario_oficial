@@ -18,7 +18,7 @@ class DiarioOficialBruto(Base):
     __tablename__ = 'diario_oficial_bruto'
     __table_args__ = {'schema': 'processing'}
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     diario_oficial_json: Mapped[JSONB] = mapped_column(type_=JSONB, nullable=True)
     data = Column(Date, unique=True)
     edicao: Mapped[int] = mapped_column(nullable=True, unique=True)
