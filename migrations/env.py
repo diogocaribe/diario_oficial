@@ -5,11 +5,7 @@ from alembic import context
 from diario_oficial.settings import Settings
 from sqlalchemy import engine_from_config, pool, MetaData, text
 from sqlalchemy.schema import CreateSchema
-
-# import sys
-# import os
-# Adiciona o diretório raiz do projeto ao sys.path
-# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from sqlalchemy_utils import database_exists, create_database
 
 from diario_oficial.database.configs.base import Base
 
@@ -19,6 +15,12 @@ from diario_oficial.database.entity.dominio import Poder
 
 from diario_oficial.database.configs.connection import DBConnectionHandler
 from diario_oficial.settings import Settings
+
+# import sys
+# import os
+# Adiciona o diretório raiz do projeto ao sys.path
+# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -34,14 +36,7 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
-convention = {
-    'ix': 'ix_%(column_0_label)s',
-    'uq': 'uq_%(table_name)s_%(column_0_name)s',
-    'ck': 'ck_%(table_name)s_%(constraint_name)s',
-    'fk': 'fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s',
-    'pk': 'pk_%(table_name)s',
-}
-metadata = MetaData(naming_convention=convention)
+metadata = MetaData()
 target_metadata = [DiarioOficialBruto.metadata]
 # target_metadata = None
 
@@ -83,13 +78,13 @@ def run_migrations_online() -> None:
 
     """
     # Create the database if it doesn't exist
-    with DBConnectionHandler() as conn:
-        result = conn.get_engine.execute(
-            text(f'SELECT 1 FROM pg_database WHERE datname = :database_name'),
-            {'database_name': Settings().DATABASE},
-        )
-        if not result.fetchone():
-            conn.execute(text(f'CREATE DATABASE {Settings().DATABASE}'))
+
+    try:
+        if not database_exists(Settings().DATABASE_URL):
+            create_database(Settings().DATABASE_URL)
+    except Exception as exception:
+        print('eu não achei o banco')
+        raise exception
 
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
@@ -102,7 +97,6 @@ def run_migrations_online() -> None:
             connection=connection, target_metadata=target_metadata, include_schemas=True
         )
         # Adicionando o schema que exite no modelo
-        # Isso aqui não ficou muito bom.
         connection.execute(CreateSchema('processing', if_not_exists=True))
         connection.execute(CreateSchema('dominio', if_not_exists=True))
 
