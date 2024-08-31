@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 
 from diario_oficial.settings import Settings
-from sqlalchemy import engine_from_config, pool, MetaData
+from sqlalchemy import engine_from_config, pool, MetaData, text
 from sqlalchemy.schema import CreateSchema
 
 # import sys
@@ -17,10 +17,13 @@ from diario_oficial.database.entity.ato_bruto import AtoBruto
 from diario_oficial.database.entity.diario_oficial_bruto import DiarioOficialBruto
 from diario_oficial.database.entity.dominio import Poder
 
+from diario_oficial.database.configs.connection import DBConnectionHandler
+from diario_oficial.settings import Settings
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", Settings().DATABASE_URL)
+config.set_main_option('sqlalchemy.url', Settings().DATABASE_URL)
 
 
 # Interpret the config file for Python logging.
@@ -32,11 +35,11 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 convention = {
-  "ix": "ix_%(column_0_label)s",
-  "uq": "uq_%(table_name)s_%(column_0_name)s",
-  "ck": "ck_%(table_name)s_%(constraint_name)s",
-  "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-  "pk": "pk_%(table_name)s"
+    'ix': 'ix_%(column_0_label)s',
+    'uq': 'uq_%(table_name)s_%(column_0_name)s',
+    'ck': 'ck_%(table_name)s_%(constraint_name)s',
+    'fk': 'fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s',
+    'pk': 'pk_%(table_name)s',
 }
 metadata = MetaData(naming_convention=convention)
 target_metadata = [DiarioOficialBruto.metadata]
@@ -60,12 +63,12 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = config.get_main_option('sqlalchemy.url')
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
+        dialect_opts={'paramstyle': 'named'},
     )
 
     with context.begin_transaction():
@@ -79,9 +82,18 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # Create the database if it doesn't exist
+    with DBConnectionHandler() as conn:
+        result = conn.get_engine.execute(
+            text(f'SELECT 1 FROM pg_database WHERE datname = :database_name'),
+            {'database_name': Settings().DATABASE},
+        )
+        if not result.fetchone():
+            conn.execute(text(f'CREATE DATABASE {Settings().DATABASE}'))
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+        prefix='sqlalchemy.',
         poolclass=pool.NullPool,
     )
 
@@ -91,8 +103,8 @@ def run_migrations_online() -> None:
         )
         # Adicionando o schema que exite no modelo
         # Isso aqui não ficou muito bom.
-        connection.execute(CreateSchema("processing", if_not_exists=True))
-        connection.execute(CreateSchema("dominio", if_not_exists=True))
+        connection.execute(CreateSchema('processing', if_not_exists=True))
+        connection.execute(CreateSchema('dominio', if_not_exists=True))
 
         with context.begin_transaction():
             context.run_migrations()

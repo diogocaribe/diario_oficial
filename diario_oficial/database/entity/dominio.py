@@ -2,7 +2,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from ..configs.base import Base
 
 
-
 class Poder(Base):
     """Tabela para registro do dominio do poder das três esferas
        EXECUTIVO, LEGISLATIVO, JUDICIÁRIO
