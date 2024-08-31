@@ -16,6 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 import util as u
 from database.entity.diario_oficial_bruto import DiarioOficialBruto
+from database.repository.diario_oficial_bruto_repository import DiarioOficialBrutoRepository
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from settings import Settings
@@ -164,7 +165,7 @@ def abrir_pastas(navegador, pastas: list):
                 print(e)
 
 
-def coleta_diario_oficial(data: str) -> dict:
+def raspar_diario_oficial(data: str) -> dict:
     """Função que coleta os dados sumarizados do diario oficial
     do Estado da Bahia.
 
@@ -440,24 +441,21 @@ def coleta_diario_oficial(data: str) -> dict:
     }
 
 
-def coletar_dado_data(data_inicial: str, data_final: str):
-    while data_inicial <= data_final:
-        print(data_inicial)
-        if diario_oficial_bruto.check_if_date_doe_coleted(data_inicial) is None:
-            carga_banco(data=data_inicial)
-        data_inicial += datetime.timedelta(days=1)
+def coleta_doe_data(data: str):
+    """Esta função raspa e salva os dados no banco a partir de uma única data
 
+    Args:
+        data (str): _description_
+    """
+    if diario_oficial_bruto.check_if_date_doe_coleted(data) is None:
 
-def carga_banco(data: str):
-    engine = create_engine(Settings().DATABASE_URL, echo=True)
+        try:
+            a = raspar_diario_oficial(data=data)
+        except Exception as exception:
+            print(exception)
 
-    a = coleta_diario_oficial(data=data)
-
-    with Session(engine) as session:
-        dados = DiarioOficialBruto(**a)
-
-        session.add(dados)
-        session.commit()
+        dados = DiarioOficialBrutoRepository()
+        dados.save_data(**a)
 
 
 # carga_banco(data=data_inicial)
