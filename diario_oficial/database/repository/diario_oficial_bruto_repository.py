@@ -1,16 +1,30 @@
-import pandas as pd
 from database.configs.connection import DBConnectionHandler
+from database.entity.diario_oficial_bruto import DiarioOficialBruto
+from datetime import datetime
 
 
-# class DecrementoMunicipioRepository:
-#     def select_all(self):
-#         with DBConnectionHandler() as db:
-#             try:
-#                 data = db.session.query(DecrementoMunicipio).all()
-#                 return data
-#             except Exception as exception:
-#                 db.session.rollback()
-#                 raise exception
+class DiarioOficialBrutoRepository:
+    def check_if_date_doe_coleted(self, data: datetime.date):
+        """Verificar se o diario oficial daquela data foi coletado
+
+        Raises:
+            exception: _description_
+
+        Returns:
+            _type_: _description_
+        """
+        with DBConnectionHandler() as db:
+            try:
+                result = (
+                    db.session.query(DiarioOficialBruto)
+                    .filter(DiarioOficialBruto.data == data)
+                    .first()
+                )
+                return result
+            except Exception as exception:
+                db.session.rollback()
+                raise exception
+
 
 #     def df_select_all(self):
 #         """

@@ -19,6 +19,7 @@ from database.entity.diario_oficial_bruto import DiarioOficialBruto
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from settings import Settings
+from dados import diario_oficial_bruto
 
 # Primeiro data do diário oficial 05/01/2016??
 
@@ -441,7 +442,9 @@ def coleta_diario_oficial(data: str) -> dict:
 
 def coletar_dado_data(data_inicial: str, data_final: str):
     while data_inicial <= data_final:
-        carga_banco(data=data_inicial)
+        print(data_inicial)
+        if diario_oficial_bruto.check_if_date_doe_coleted(data_inicial) is None:
+            carga_banco(data=data_inicial)
         data_inicial += datetime.timedelta(days=1)
 
 
@@ -459,4 +462,5 @@ def carga_banco(data: str):
 
 # carga_banco(data=data_inicial)
 
-coletar_dado_data(data_inicial=data_inicial, data_final=data_final)
+# Exemplo de como utilizar a função
+# coletar_dado_data(data_inicial=data_inicial, data_final=data_final)

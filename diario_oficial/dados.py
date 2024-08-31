@@ -1,0 +1,3 @@
+from database.repository.diario_oficial_bruto_repository import DiarioOficialBrutoRepository
+
+diario_oficial_bruto = DiarioOficialBrutoRepository()
