@@ -16,6 +16,7 @@ sqlalchemy = "2.0.31"
 pandas = "^2.2.2"
 psycopg = "^3.2.1"
 alembic = "^1.13.2"
+sqlalchemy-utils = "^0.41.2"
 
 
 [tool.poetry.group.dev.dependencies]
