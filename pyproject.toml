@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "diario_oficial"}]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.12"
 bs4 = "^0.0.2"
 requests = "^2.31.0"
 selenium = "^4.20.0"
