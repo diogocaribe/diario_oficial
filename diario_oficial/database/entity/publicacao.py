@@ -22,6 +22,9 @@ class Publicacao(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     doe_nro_edicao: Mapped[int] = mapped_column(ForeignKey('processing.doe_bruto.nro_edicao'))
     poder_id: Mapped[int] = mapped_column(ForeignKey('dominio.poder.id'))
+    adm_direta_id: Mapped[int] = mapped_column(ForeignKey('dominio.adm_direta.id'))
+    adm_indireta_id: Mapped[int] = mapped_column(ForeignKey('dominio.adm_indireta.id'))
+    orgao_adm_indireta_id: Mapped[int] = mapped_column(ForeignKey('dominio.orgao_adm_indireta.id'))
     nome_ato: Mapped[str]
     identificador_link: Mapped[str]
     link: Mapped[str]
