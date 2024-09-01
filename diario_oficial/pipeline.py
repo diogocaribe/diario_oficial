@@ -1,4 +1,4 @@
-from diario_oficial_bruto import coleta_doe_data
+from raspar_doe import coleta_doe_data
 import datetime
 from dados import diario_oficial_bruto
 
@@ -9,6 +9,7 @@ data_final = datetime.date(2024, 1, 30)
 # para ir preenchendo a tabela logo. Não esperar toda a coleta das datas para executar pipeline todo
 def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
     """Esta função raspa e salva os dados no banco a partir de uma data inicial e final
+        Quando a data inicial é igual a final só executa uma única data
 
     Args:
         data_inicial (str): _description_

@@ -223,7 +223,7 @@ def raspar_diario_oficial(data: str) -> dict:
             alert.accept()
             time.sleep(1)
             print(f'Edição não existe: {data_}')
-            return {'data': data, 'exist': False}
+            return {'dt_edicao': data, 'existe': False}
     except Exception:
         print(f'Edição existente: {data_}')
 
@@ -434,10 +434,10 @@ def raspar_diario_oficial(data: str) -> dict:
 
     print(dict_pasta_nivel_4)
     return {
-        'diario_oficial_json': dict_pasta_nivel_4,
-        'edicao': edicao,
-        'data': data,
-        'exist': True,
+        'doe_json': dict_pasta_nivel_4,
+        'nro_edicao': edicao,
+        'dt_edicao': data,
+        'existe': True,
     }
 
 

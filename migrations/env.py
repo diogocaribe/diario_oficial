@@ -4,13 +4,12 @@ from alembic import context
 
 from diario_oficial.settings import Settings
 from sqlalchemy import engine_from_config, pool, MetaData
-from sqlalchemy.schema import CreateSchema
 from sqlalchemy_utils import database_exists, create_database
 
 
-from diario_oficial.database.entity.diario_oficial_bruto import DiarioOficialBruto
+from diario_oficial.database.entity.doe_bruto import DiarioOficialBruto
+from diario_oficial.database.entity.publicacao import Publicacao
 from diario_oficial.database.entity.dominio import Poder
-from diario_oficial.database.entity.ato_bruto import AtoBruto
 
 # import sys
 # import os
@@ -74,7 +73,6 @@ def run_migrations_online() -> None:
 
     """
     # Create the database if it doesn't exist
-
     try:
         if not database_exists(Settings().DATABASE_URL):
             create_database(Settings().DATABASE_URL)
