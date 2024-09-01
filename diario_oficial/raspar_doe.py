@@ -448,7 +448,6 @@ def coleta_doe_data(data: str):
         data (str): _description_
     """
     if diario_oficial_bruto.check_if_date_doe_coleted(data) is None:
-
         try:
             a = raspar_diario_oficial(data=data)
         except Exception as exception:

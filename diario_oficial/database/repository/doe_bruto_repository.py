@@ -26,7 +26,6 @@ class DiarioOficialBrutoRepository:
                 raise exception
 
     def save_data(self, **kwargs):
-
         with DBConnectionHandler() as db:
             try:
                 dados = DiarioOficialBruto(**kwargs)
@@ -35,4 +34,3 @@ class DiarioOficialBrutoRepository:
             except Exception as exception:
                 db.session.rollback()
                 raise exception
-
