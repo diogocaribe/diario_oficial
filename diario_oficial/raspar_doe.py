@@ -15,8 +15,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 import util as u
-from database.entity.diario_oficial_bruto import DiarioOficialBruto
-from database.repository.diario_oficial_bruto_repository import DiarioOficialBrutoRepository
+from database.entity.doe_bruto import DiarioOficialBruto
+from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from settings import Settings
