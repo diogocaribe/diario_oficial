@@ -25,15 +25,6 @@ sqlalchemy.url = driver://user:pass@localhost/dbname -> endereço do banco de da
 
 ```
 alembic revision --autogenerate -m "comentario sobre a versão"
-```
-
-## Criando a migração
-
-Esta etapa deve ser realizada para inicar o projeto em um novo servidor
-
-revision -> criar uma nova versão
-```
-alembic revision -m "comentario sobre a versão"
 
 alembic upgrade head
 ```
