@@ -3,18 +3,14 @@ from logging.config import fileConfig
 from alembic import context
 
 from diario_oficial.settings import Settings
-from sqlalchemy import engine_from_config, pool, MetaData, text
+from sqlalchemy import engine_from_config, pool, MetaData
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy_utils import database_exists, create_database
 
-from diario_oficial.database.configs.base import Base
 
-from diario_oficial.database.entity.ato_bruto import AtoBruto
 from diario_oficial.database.entity.diario_oficial_bruto import DiarioOficialBruto
 from diario_oficial.database.entity.dominio import Poder
-
-from diario_oficial.database.configs.connection import DBConnectionHandler
-from diario_oficial.settings import Settings
+from diario_oficial.database.entity.ato_bruto import AtoBruto
 
 # import sys
 # import os
@@ -96,9 +92,6 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection, target_metadata=target_metadata, include_schemas=True
         )
-        # Adicionando o schema que exite no modelo
-        connection.execute(CreateSchema('processing', if_not_exists=True))
-        connection.execute(CreateSchema('dominio', if_not_exists=True))
 
         with context.begin_transaction():
             context.run_migrations()
