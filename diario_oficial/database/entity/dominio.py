@@ -52,7 +52,7 @@ class AdministracaoIndireta(Base):
     sigla: Mapped[str] = mapped_column(nullable=False)
 
 
-class OrgaoAdministracaoDireta(Base):
+class DivisaoAdministracaoDireta(Base):
     """Tabela para registro do dominio da adm indireta (Orgãos, Institutos)
         Ex.
         nome : Diretoria
@@ -61,7 +61,7 @@ class OrgaoAdministracaoDireta(Base):
         Base (_type_): _description_
     """
 
-    __tablename__ = 'orgao_adm_indireta'
+    __tablename__ = 'divisao_adm_direta'
     __table_args__ = {'schema': 'dominio'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)

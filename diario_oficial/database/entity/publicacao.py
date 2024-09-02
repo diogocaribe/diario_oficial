@@ -24,7 +24,7 @@ class Publicacao(Base):
     poder_id: Mapped[int] = mapped_column(ForeignKey('dominio.poder.id'))
     adm_direta_id: Mapped[int] = mapped_column(ForeignKey('dominio.adm_direta.id'))
     adm_indireta_id: Mapped[int] = mapped_column(ForeignKey('dominio.adm_indireta.id'))
-    orgao_adm_indireta_id: Mapped[int] = mapped_column(ForeignKey('dominio.orgao_adm_indireta.id'))
+    divisao_adm_direta_id: Mapped[int] = mapped_column(ForeignKey('dominio.divisao_adm_direta.id'))
     nome_ato: Mapped[str]
     identificador_link: Mapped[str]
     link: Mapped[str]
