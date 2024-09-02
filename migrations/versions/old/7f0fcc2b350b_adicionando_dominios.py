@@ -104,7 +104,7 @@ def upgrade() -> None:
     op.execute(
         sa.text("""
             INSERT INTO dominio.adm_direta (nome, sigla) VALUES
-            ('Secretaria de Meio Ambiente', 'SEMA')
+            ('SECRETARIA DO MEIO AMBIENTE', 'SEMA')
             ON CONFLICT (nome) DO NOTHING
         """)
     )
@@ -113,7 +113,7 @@ def upgrade() -> None:
     op.execute(
         sa.text("""
             INSERT INTO dominio.adm_indireta (nome, sigla) VALUES
-            ('Instituto de Meio Ambiente e Recursos Hídricos', 'INEMA')
+            ('Instituto do Meio Ambiente e Recursos Hídricos - INEMA', 'INEMA')
             ON CONFLICT (nome) DO NOTHING
         """)
     )
@@ -122,10 +122,20 @@ def upgrade() -> None:
     op.execute(
         sa.text("""
             INSERT INTO dominio.orgao_adm_indireta (nome, sigla) VALUES
-            ('Diretoria', 'DG')
+            ('Diretoria Geral', 'DG')
             ON CONFLICT (nome) DO NOTHING
         """)
     )
+
+    # Lista de valores a serem inseridos
+    nomes = ['EXECUTIVO', 'LEGISLATIVO', 'JUDICIÁRIO']
+
+    # Itera sobre cada valor e executa o INSERT
+    for nome in nomes:
+        op.execute(
+            sa.text(f'INSERT INTO dominio.poder (nome) VALUES (\'{nome}\')'),
+        )
+
     # ### end Alembic commands ###
 
 
@@ -165,21 +175,26 @@ def downgrade() -> None:
     op.execute(
         sa.text("""
             DELETE FROM dominio.adm_direta
-            WHERE nome = 'Secretaria de Meio Ambiente'
+            WHERE nome = 'SECRETARIA DO MEIO AMBIENTE'
         """)
     )
 
     op.execute(
         sa.text("""
             DELETE FROM dominio.adm_indireta
-            WHERE nome = 'Instituto de Meio Ambiente e Recursos Hídricos'
+            WHERE nome = 'Instituto do Meio Ambiente e Recursos Hídricos - INEMA'
         """)
     )
 
     op.execute(
         sa.text("""
             DELETE FROM dominio.orgao_adm_indireta
-            WHERE nome = 'Diretoria'
+            WHERE nome = 'Diretoria Geral'
         """)
+    )
+
+    op.execute(
+        sa.text('DELETE FROM dominio.poder WHERE nome = :nome'),
+        [{'nome': 'EXECUTIVO'}, {'nome': 'LEGISLATIVO'}, {'nome': 'JUDICIÁRIO'}],
     )
     # ### end Alembic commands ###
