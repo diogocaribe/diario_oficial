@@ -1,9 +1,17 @@
 # diario_oficial
 Raspar dados do Diário Oficial do Estado da Bahia
 
-# Configurando o projeto
+# Configurando o projeto (sem docker)
 
 ### Clonando o projeto
+
+## Instalar o poetry
+
+## Contruindo o ambiente virtual do projeto
+
+```
+poetry install
+```
 
 ##### Inicializando o alembic
 
