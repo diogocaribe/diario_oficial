@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..configs.base import Base
 from diario_oficial.database.configs.connection import DBConnectionHandler
 
@@ -16,6 +16,9 @@ class Poder(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     nome: Mapped[str] = mapped_column(nullable=False, unique=True)
 
+    publicacao = relationship('Publicacao',
+                        #   back_populates='publicacao',
+                            cascade='all, delete-orphan')
 
 class AdministracaoDireta(Base):
     """Tabela para registro do dominio da adm direta (Secretarias)
@@ -33,6 +36,10 @@ class AdministracaoDireta(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     nome: Mapped[str] = mapped_column(nullable=False, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
+
+    publicacao = relationship('Publicacao',
+                        #   back_populates='publicacao',
+                            cascade='all, delete-orphan')
 
 
 class AdministracaoIndireta(Base):
@@ -67,3 +74,7 @@ class DivisaoAdministracaoDireta(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     nome: Mapped[str] = mapped_column(nullable=True, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
+
+    publicacao = relationship('Publicacao',
+                            #   back_populates='publicacao',
+                              cascade='all, delete-orphan')
