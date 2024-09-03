@@ -32,7 +32,7 @@ class AdministracaoDireta(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     nome: Mapped[str] = mapped_column(nullable=False, unique=True)
-    sigla: Mapped[str] = mapped_column(nullable=False)
+    sigla: Mapped[str] = mapped_column(nullable=True)
 
 
 class AdministracaoIndireta(Base):
@@ -48,8 +48,8 @@ class AdministracaoIndireta(Base):
     __table_args__ = {'schema': 'dominio'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
-    nome: Mapped[str] = mapped_column(nullable=False, unique=True)
-    sigla: Mapped[str] = mapped_column(nullable=False)
+    nome: Mapped[str] = mapped_column(nullable=True, unique=True)
+    sigla: Mapped[str] = mapped_column(nullable=True)
 
 
 class DivisaoAdministracaoDireta(Base):
@@ -65,5 +65,5 @@ class DivisaoAdministracaoDireta(Base):
     __table_args__ = {'schema': 'dominio'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
-    nome: Mapped[str] = mapped_column(nullable=False, unique=True)
-    sigla: Mapped[str] = mapped_column(nullable=False)
+    nome: Mapped[str] = mapped_column(nullable=True, unique=True)
+    sigla: Mapped[str] = mapped_column(nullable=True)

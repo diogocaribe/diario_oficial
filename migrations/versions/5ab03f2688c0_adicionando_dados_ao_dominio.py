@@ -74,7 +74,7 @@ def downgrade() -> None:
 
     op.execute(
         sa.text("""
-            DELETE FROM dominio.orgao_adm_indireta
+            DELETE FROM dominio.divisao_adm_indireta
             WHERE nome = 'Diretoria Geral'
         """)
     )

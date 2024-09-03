@@ -10,19 +10,12 @@ class PublicacaoRepository:
         publicacoes = []
 
         for item in dados:
-            _publicacao = Publicacao(
-                doe_nro_edicao=item.get("nro_edicao"),
-                poder_id=item.get("poder"),
-                adm_direta_id=item.get("adm_direta"),
-                divisao_adm_direta_id=item.get("divisao_adm_direta"),
-                adm_indireta_id=item.get("adm_indireta"),
-                nome_ato=item.get("nome"),
-                identificador_link=item.get("identificador"),
-                link=item.get("link")
-            )
-            print(_publicacao)
+            publicacao = Publicacao(**item)
+            # print(publicacao)
 
-            publicacoes.append(_publicacao)
+            publicacoes.append(publicacao)
+
+            print(publicacoes)
 
         with DBConnectionHandler() as db:
             try:
