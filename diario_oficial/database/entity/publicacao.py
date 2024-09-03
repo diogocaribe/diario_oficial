@@ -30,4 +30,4 @@ class Publicacao(Base):
     link: Mapped[str]
 
     def __repr__(self):
-        return f'Ato Bruto [Identificador={self.edicao}, data={self.data}]'
+        return f'Publicação [Identificador={self.doe_nro_edicao}, nome={self.nome_ato}]'

@@ -20,7 +20,7 @@ from database.repository.doe_bruto_repository import DiarioOficialBrutoRepositor
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from settings import Settings
-from dados import diario_oficial_bruto
+from dados import doe_bruto
 
 # Primeiro data do diário oficial 05/01/2016??
 
@@ -447,7 +447,7 @@ def coleta_doe_data(data: str):
     Args:
         data (str): _description_
     """
-    if diario_oficial_bruto.check_if_date_doe_coleted(data) is None:
+    if doe_bruto.check_if_date_doe_coleted(data) is None:
         try:
             a = raspar_diario_oficial(data=data)
         except Exception as exception:

@@ -1,6 +1,6 @@
 from raspar_doe import coleta_doe_data
 import datetime
-from dados import diario_oficial_bruto
+from dados import doe_bruto, publicacao
 
 data_inicial = datetime.date(2024, 1, 5)  # 2024, 3, 15 tem um caso especial
 data_final = datetime.date(2024, 1, 30)
@@ -18,6 +18,11 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
     """
     while data_inicial <= data_final:
         coleta_doe_data(data=data_inicial)
+
+        print(doe_bruto.explodir_doe_bruto_json(data=data_inicial))
+        dados = doe_bruto.explodir_doe_bruto_json(data=data_inicial)
+
+        publicacao.save_data(dados)
 
         data_inicial += datetime.timedelta(days=1)
 
