@@ -1,8 +1,8 @@
-"""iniciando banco
+"""iniciando o banco
 
-Revision ID: dfae75d03e16
+Revision ID: 134e1f1bf7a3
 Revises: 
-Create Date: 2024-09-02 16:50:48.562355
+Create Date: 2024-09-05 17:55:57.509668
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'dfae75d03e16'
+revision: str = '134e1f1bf7a3'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,7 +27,7 @@ def upgrade() -> None:
     op.create_table('adm_direta',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('nome', sa.String(), nullable=False),
-    sa.Column('sigla', sa.String(), nullable=False),
+    sa.Column('sigla', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_adm_direta_id')),
     sa.UniqueConstraint('nome', name=op.f('uq_adm_direta_nome')),
     schema='dominio'
@@ -35,8 +35,8 @@ def upgrade() -> None:
     op.create_index(op.f('ix_adm_direta_id'), 'adm_direta', ['id'], unique=False, schema='dominio')
     op.create_table('adm_indireta',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('nome', sa.String(), nullable=False),
-    sa.Column('sigla', sa.String(), nullable=False),
+    sa.Column('nome', sa.String(), nullable=True),
+    sa.Column('sigla', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_adm_indireta_id')),
     sa.UniqueConstraint('nome', name=op.f('uq_adm_indireta_nome')),
     schema='dominio'
@@ -44,8 +44,8 @@ def upgrade() -> None:
     op.create_index(op.f('ix_adm_indireta_id'), 'adm_indireta', ['id'], unique=False, schema='dominio')
     op.create_table('divisao_adm_direta',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('nome', sa.String(), nullable=False),
-    sa.Column('sigla', sa.String(), nullable=False),
+    sa.Column('nome', sa.String(), nullable=True),
+    sa.Column('sigla', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_divisao_adm_direta_id')),
     sa.UniqueConstraint('nome', name=op.f('uq_divisao_adm_direta_nome')),
     schema='dominio'
@@ -59,6 +59,15 @@ def upgrade() -> None:
     schema='dominio'
     )
     op.create_index(op.f('ix_poder_id'), 'poder', ['id'], unique=False, schema='dominio')
+    op.create_table('tipo_publicacao',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('nome', sa.String(), nullable=True),
+    sa.Column('sigla', sa.String(), nullable=True),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_tipo_publicacao_id')),
+    sa.UniqueConstraint('nome', name=op.f('uq_tipo_publicacao_nome')),
+    schema='dominio'
+    )
+    op.create_index(op.f('ix_tipo_publicacao_id'), 'tipo_publicacao', ['id'], unique=False, schema='dominio')
     op.create_table('doe_bruto',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('criado_em', sa.DateTime(), server_default=sa.text('now()'), nullable=False, comment='Data e horario da coleta desse registro.'),
@@ -74,19 +83,21 @@ def upgrade() -> None:
     op.create_index(op.f('ix_doe_bruto_id'), 'doe_bruto', ['id'], unique=False, schema='processing')
     op.create_table('publicacao',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('doe_nro_edicao', sa.Integer(), nullable=False),
+    sa.Column('doe_bruto_id', sa.Integer(), nullable=False),
     sa.Column('poder_id', sa.Integer(), nullable=False),
-    sa.Column('adm_direta_id', sa.Integer(), nullable=False),
-    sa.Column('adm_indireta_id', sa.Integer(), nullable=False),
-    sa.Column('divisao_adm_direta_id', sa.Integer(), nullable=False),
+    sa.Column('adm_direta_id', sa.Integer(), nullable=True),
+    sa.Column('adm_indireta_id', sa.Integer(), nullable=True),
+    sa.Column('divisao_adm_direta_id', sa.Integer(), nullable=True),
+    sa.Column('tipo_publicacao_id', sa.Integer(), nullable=True),
     sa.Column('nome_ato', sa.String(), nullable=False),
     sa.Column('identificador_link', sa.String(), nullable=False),
     sa.Column('link', sa.String(), nullable=False),
     sa.ForeignKeyConstraint(['adm_direta_id'], ['dominio.adm_direta.id'], name=op.f('fk_publicacao_adm_direta_id_adm_direta')),
     sa.ForeignKeyConstraint(['adm_indireta_id'], ['dominio.adm_indireta.id'], name=op.f('fk_publicacao_adm_indireta_id_adm_indireta')),
     sa.ForeignKeyConstraint(['divisao_adm_direta_id'], ['dominio.divisao_adm_direta.id'], name=op.f('fk_publicacao_divisao_adm_direta_id_divisao_adm_direta')),
-    sa.ForeignKeyConstraint(['doe_nro_edicao'], ['processing.doe_bruto.nro_edicao'], name=op.f('fk_publicacao_doe_nro_edicao_doe_bruto')),
+    sa.ForeignKeyConstraint(['doe_bruto_id'], ['processing.doe_bruto.id'], name=op.f('fk_publicacao_doe_bruto_id_doe_bruto')),
     sa.ForeignKeyConstraint(['poder_id'], ['dominio.poder.id'], name=op.f('fk_publicacao_poder_id_poder')),
+    sa.ForeignKeyConstraint(['tipo_publicacao_id'], ['dominio.tipo_publicacao.id'], name=op.f('fk_publicacao_tipo_publicacao_id_tipo_publicacao')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_publicacao_id')),
     schema='processing'
     )
@@ -100,6 +111,8 @@ def downgrade() -> None:
     op.drop_table('publicacao', schema='processing')
     op.drop_index(op.f('ix_doe_bruto_id'), table_name='doe_bruto', schema='processing')
     op.drop_table('doe_bruto', schema='processing')
+    op.drop_index(op.f('ix_tipo_publicacao_id'), table_name='tipo_publicacao', schema='dominio')
+    op.drop_table('tipo_publicacao', schema='dominio')
     op.drop_index(op.f('ix_poder_id'), table_name='poder', schema='dominio')
     op.drop_table('poder', schema='dominio')
     op.drop_index(op.f('ix_divisao_adm_direta_id'), table_name='divisao_adm_direta', schema='dominio')
