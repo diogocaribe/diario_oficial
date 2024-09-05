@@ -4,6 +4,7 @@ from diario_oficial.database.entity.dominio import (
     DivisaoAdministracaoDireta,
     AdministracaoDireta,
     Poder,
+    TipoPublicacao
 )
 from diario_oficial.database.entity.doe_bruto import DiarioOficialBruto
 
@@ -29,10 +30,13 @@ class Publicacao(Base):
     poder_id: Mapped[int] = mapped_column(ForeignKey('dominio.poder.id'), nullable=False)
     adm_direta_id: Mapped[int] = mapped_column(ForeignKey('dominio.adm_direta.id'), nullable=True)
     adm_indireta_id: Mapped[int] = mapped_column(
-        ForeignKey('dominio.adm_indireta.id'), nullable=False
+        ForeignKey('dominio.adm_indireta.id'), nullable=True
     )
     divisao_adm_direta_id: Mapped[int] = mapped_column(
         ForeignKey('dominio.divisao_adm_direta.id'), nullable=True
+    )
+    tipo_publicacao_id: Mapped[int] = mapped_column(
+        ForeignKey('dominio.tipo_publicacao.id'), nullable=True
     )
     nome_ato: Mapped[str]
     identificador_link: Mapped[str]
@@ -42,6 +46,7 @@ class Publicacao(Base):
     divisao_adm_direta = relationship(DivisaoAdministracaoDireta)
     adm_direta = relationship(AdministracaoDireta)
     poder = relationship(Poder)
+    tipo_publicacao = relationship(TipoPublicacao)
 
     def __repr__(self):
         return f'Publicação [Identificador={self.doe_bruto_id}, nome={self.nome_ato}]'

@@ -78,3 +78,21 @@ class DivisaoAdministracaoDireta(Base):
     publicacao = relationship('Publicacao',
                             #   back_populates='publicacao',
                               cascade='all, delete-orphan')
+    
+
+class TipoPublicacao(Base):
+
+    __tablename__ = 'tipo_publicacao'
+    __table_args__ = {'schema': 'dominio'}
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    nome: Mapped[str] = mapped_column(nullable=True, unique=True)
+    sigla: Mapped[str] = mapped_column(nullable=True)
+
+    publicacao = relationship('Publicacao',
+                            #   back_populates='publicacao',
+                              cascade='all, delete-orphan')
+
+
+
+

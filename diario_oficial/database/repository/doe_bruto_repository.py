@@ -50,66 +50,107 @@ class DiarioOficialBrutoRepository:
         with DBConnectionHandler() as db:
             try:
                 sql = f"""
-                    WITH json_keys AS (
-                        -- Extrai as chaves do primeiro nível (por exemplo, "EXECUTIVO")
-                        SELECT
-                            id,
-                            jsonb_object_keys(doe_json) AS poder_key,
-                            doe_json -> jsonb_object_keys(doe_json) AS poder_json
-                        FROM processing.doe_bruto
-                        WHERE dt_edicao = '{data}'
-                    ),
-                    adm_direta_keys AS (
-                        -- Extrai as chaves do segundo nível a partir do resultado da CTE anterior
-                        SELECT
-                            id,
-                            poder_key,
-                            jsonb_object_keys(poder_json) AS adm_direta_key,
-                            poder_json -> jsonb_object_keys(poder_json) AS adm_direta_json
-                        FROM json_keys
-                    ),
-                    diretorias AS (
-                        -- Extrai as chaves do terceiro nível a partir do resultado da CTE anterior
-                        SELECT
-                            id,
-                            poder_key,
-                            adm_direta_key,
-                            jsonb_object_keys(adm_direta_json) AS diretoria_key,
-                            adm_direta_json -> jsonb_object_keys(adm_direta_json) AS diretoria_json
-                        FROM adm_direta_keys
-                    ),
-                    portarias AS (
-                        -- Extrai a lista de portarias a partir do resultado da CTE anterior
-                        SELECT
-                            id,
-                            poder_key,
-                            adm_direta_key,
-                            diretoria_key,
-                            (diretoria_json -> 'Portarias') AS portarias_array
-                        FROM diretorias
-                    ),
-                    expanded_portarias AS (
-                        -- Expande a lista de portarias em linhas e extrai os campos desejados
-                        SELECT
-                            id,
-                            poder_key,
-                            adm_direta_key,
-                            diretoria_key,
-                            jsonb_array_elements(portarias_array) AS portaria
-                        FROM portarias
-                    )
-                    -- Consulta final para selecionar os campos específicos das portarias
+                -- Consulta para administracao direta
+                WITH poder AS (
+                    -- Extrai as chaves do primeiro nível (por exemplo, "EXECUTIVO")
                     SELECT
                         id AS doe_bruto_id,
-                        --nro_edicao AS doe_nro_edicao,
-                        (SELECT id FROM dominio.poder p WHERE p.nome = poder_key) AS poder_id,
-                        (SELECT id FROM dominio.adm_direta ad WHERE ad.nome = adm_direta_key) AS adm_direta_id,
-                        (SELECT id FROM dominio.divisao_adm_direta dad WHERE diretoria_key IN (SELECT dad.nome FROM dominio.divisao_adm_direta dad)) AS divisao_adm_direta_id,
-                        (SELECT id FROM dominio.adm_indireta ai WHERE diretoria_key IN (SELECT ai.nome FROM dominio.adm_indireta dad1)) AS adm_indireta_id,
-                        portaria ->> 'nome' AS nome_ato,
-                        portaria ->> 'identificador' AS identificador_link,
-                        portaria ->> 'link' AS link
-                    FROM expanded_portarias;
+                        jsonb_object_keys(doe_json) AS poder,
+                        doe_json -> jsonb_object_keys(doe_json) AS _json
+                    FROM processing.doe_bruto
+                    WHERE dt_edicao = '{data}'
+                ),
+                adm_direta AS (
+                    -- Extrai as chaves do segundo nível a partir do resultado da CTE anterior
+                    SELECT
+                        doe_bruto_id,
+                        poder,
+                        jsonb_object_keys(_json) AS adm_direta,
+                        _json -> jsonb_object_keys(_json) AS _json
+                    FROM poder
+                ),
+                divisao_adm_direta_ AS (
+                    -- Extrai as chaves do segundo nível a partir do resultado da CTE anterior
+                    SELECT
+                        doe_bruto_id,
+                        poder,
+                        adm_direta,
+                        jsonb_object_keys(_json) AS divisao_adm_direta,
+                        _json -> jsonb_object_keys(_json) AS _json
+                    FROM adm_direta
+                ),
+                tratando_divisao_adm_direta AS (
+                    SELECT
+                        doe_bruto_id,
+                        poder,
+                        adm_direta,
+                        CASE 
+                            WHEN divisao_adm_direta IN (SELECT dad.nome FROM dominio.divisao_adm_direta dad) THEN divisao_adm_direta
+                        END AS divisao_adm_direta,
+                        CASE 
+                            WHEN divisao_adm_direta IN (SELECT ai.nome FROM dominio.adm_indireta ai) THEN divisao_adm_direta
+                        END AS adm_indireta,
+                        CASE 
+                            WHEN divisao_adm_direta IN (SELECT tp.nome FROM dominio.tipo_publicacao tp) THEN divisao_adm_direta
+                        END AS tipo_publicacao,
+                        CASE 
+                            WHEN
+                                jsonb_typeof(_json) = 'array' THEN _json
+                            ELSE
+                                _json
+                        END AS _json
+                    FROM divisao_adm_direta_
+                )
+                --Administracao Direta
+                SELECT
+                    doe_bruto_id,
+                    p.id AS poder_id,
+                    ad.id AS adm_direta_id,
+                    dad.id AS divisao_adm_direta_id,
+                    ai.id AS adm_indireta_id,
+                    tp.id AS tipo_publicacao_id,
+                    jsonb_array_elements_text(_json)::jsonb->>'nome' AS nome_ato,
+                    jsonb_array_elements_text(_json)::jsonb->>'identificador' AS identificador_link,
+                    jsonb_array_elements_text(_json)::jsonb->>'link' AS link 
+                FROM tratando_divisao_adm_direta
+                LEFT JOIN dominio.poder p ON p.nome = poder
+                LEFT JOIN dominio.adm_direta ad ON ad.nome = adm_direta
+                LEFT JOIN dominio.divisao_adm_direta dad ON dad.nome = divisao_adm_direta
+                LEFT JOIN dominio.adm_indireta ai ON ai.nome = adm_indireta
+                LEFT JOIN dominio.tipo_publicacao tp ON tp.nome = tipo_publicacao
+                WHERE jsonb_typeof(_json) = 'array'
+                UNION
+                -- Administracao Indireta
+                SELECT 
+                    doe_bruto_id,
+                    poder_id,
+                    adm_direta_id,
+                    divisao_adm_direta_id,
+                    adm_indireta_id,
+                    tp2.id AS tipo_publicacao_id,
+                    t.nome AS nome_ato, 
+                    identificador AS identificador_link, 
+                    link
+                FROM (
+                    SELECT 
+                        doe_bruto_id,
+                        p.id AS poder_id,
+                        ad.id AS adm_direta_id,
+                        dad.id AS divisao_adm_direta_id,
+                        ai.id AS adm_indireta_id,
+                        jsonb_object_keys(_json) AS tipo_publicacao,
+                        jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'nome' AS nome,
+                        jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'identificador' AS identificador,
+                        jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'link' AS link
+                    FROM tratando_divisao_adm_direta
+                    LEFT JOIN dominio.poder p ON p.nome = poder
+                    LEFT JOIN dominio.adm_direta ad ON ad.nome = adm_direta
+                    LEFT JOIN dominio.divisao_adm_direta dad ON dad.nome = divisao_adm_direta
+                    LEFT JOIN dominio.adm_indireta ai ON ai.nome = adm_indireta
+                    LEFT JOIN dominio.tipo_publicacao tp ON tp.nome = tipo_publicacao
+                    WHERE jsonb_typeof(_json) = 'object'
+                ) t
+                LEFT JOIN dominio.tipo_publicacao tp2 ON tp2.nome = t.tipo_publicacao;
                 """
                 result = db.get_engine().connect().execute(text(sql))
                 columns = result.keys()
