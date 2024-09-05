@@ -16,9 +16,7 @@ class Poder(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     nome: Mapped[str] = mapped_column(nullable=False, unique=True)
 
-    publicacao = relationship('Publicacao',
-                        #   back_populates='publicacao',
-                            cascade='all, delete-orphan')
+    publicacao = relationship('Publicacao', back_populates='poder', cascade='all, delete-orphan')
 
 class AdministracaoDireta(Base):
     """Tabela para registro do dominio da adm direta (Secretarias)
@@ -37,9 +35,7 @@ class AdministracaoDireta(Base):
     nome: Mapped[str] = mapped_column(nullable=False, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
 
-    publicacao = relationship('Publicacao',
-                        #   back_populates='publicacao',
-                            cascade='all, delete-orphan')
+    publicacao = relationship('Publicacao', back_populates='adm_direta', cascade='all, delete-orphan')
 
 
 class AdministracaoIndireta(Base):
@@ -58,6 +54,8 @@ class AdministracaoIndireta(Base):
     nome: Mapped[str] = mapped_column(nullable=True, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
 
+    publicacao = relationship('Publicacao', back_populates='adm_indireta', cascade='all, delete-orphan')
+
 
 class DivisaoAdministracaoDireta(Base):
     """Tabela para registro do dominio da adm indireta (Orgãos, Institutos)
@@ -75,10 +73,7 @@ class DivisaoAdministracaoDireta(Base):
     nome: Mapped[str] = mapped_column(nullable=True, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
 
-    publicacao = relationship('Publicacao',
-                            #   back_populates='publicacao',
-                              cascade='all, delete-orphan')
-    
+    publicacao = relationship('Publicacao', back_populates='divisao_adm_direta', cascade='all, delete-orphan')
 
 class TipoPublicacao(Base):
 
@@ -89,9 +84,7 @@ class TipoPublicacao(Base):
     nome: Mapped[str] = mapped_column(nullable=True, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
 
-    publicacao = relationship('Publicacao',
-                            #   back_populates='publicacao',
-                              cascade='all, delete-orphan')
+    publicacao = relationship('Publicacao', back_populates='tipo_publicacao', cascade='all, delete-orphan')
 
 
 
