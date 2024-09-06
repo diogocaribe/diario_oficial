@@ -1,4 +1,4 @@
--- Consulta para administracao direta
+-- Consulta para fazer a carga em processing.publicacao
 WITH poder AS (
     -- Extrai as chaves do primeiro nível (por exemplo, "EXECUTIVO")
     SELECT
@@ -18,7 +18,6 @@ adm_direta AS (
     FROM poder
 ),
 divisao_adm_direta_ AS (
-    -- Extrai as chaves do segundo nível a partir do resultado da CTE anterior
     SELECT
 		doe_bruto_id,
         poder,
@@ -99,3 +98,15 @@ FROM (
 	WHERE jsonb_typeof(_json) = 'object'
 ) t
 LEFT JOIN dominio.tipo_publicacao tp2 ON tp2.nome = t.tipo_publicacao;
+
+
+-- Consulta para fazer o join dos atributos de publicacao
+SELECT p.id, db.nro_edicao, db.dt_edicao, p2.nome AS poder, ad.nome AS adm_direta, ai.nome AS adm_indireta, dad.nome AS divisao_adm_direta, tp.nome AS tipo_publicacao, 
+		p.nome_ato, p.identificador_link, p.link  
+FROM processing.doe_bruto db 
+JOIN processing.publicacao p ON p.doe_bruto_id = db.id 
+LEFT JOIN dominio.poder p2 ON p.poder_id = p2.id 
+LEFT JOIN dominio.adm_direta ad ON p.adm_direta_id = ad.id
+LEFT JOIN dominio.adm_indireta ai ON p.adm_indireta_id = ai.id
+LEFT JOIN dominio.divisao_adm_direta dad ON p.divisao_adm_direta_id = dad.id
+LEFT JOIN dominio.tipo_publicacao tp ON p.tipo_publicacao_id = tp.id
