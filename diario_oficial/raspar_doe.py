@@ -135,8 +135,8 @@ def coletar_lista_link_ato(navegador, i):
     lista_ato = [
         {
             'nome': i.text,
-            'identificador': i.get_attribute('identificador'),
-            'link': f"https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/{i.get_attribute('identificador')}",
+            'identificador': i.get_attribute('data-materia-id'),
+            'link': f"https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/{i.get_attribute('data-materia-id')}",
         }
         for i in listar_elmento(navegador, By.TAG_NAME, 'a')
         if i.text[0] == '#'
@@ -454,7 +454,10 @@ def coleta_doe_data(data: str):
             print(exception)
 
         dados = DiarioOficialBrutoRepository()
-        dados.save_data(**a)
+        try:    
+            dados.save_data(**a)
+        except UnboundLocalError as e:
+                print(f"Erro: {e}") 
 
 
 # carga_banco(data=data_inicial)
