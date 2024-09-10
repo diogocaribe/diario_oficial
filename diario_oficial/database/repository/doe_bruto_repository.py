@@ -29,6 +29,11 @@ class DiarioOficialBrutoRepository:
                 raise exception
 
     def save_data(self, **kwargs):
+        """Inserindo os dados coletados do diario oficial
+
+        Raises:
+            exception: _description_
+        """
         with DBConnectionHandler() as db:
             try:
                 dados = DiarioOficialBruto(**kwargs)

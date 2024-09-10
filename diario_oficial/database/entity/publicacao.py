@@ -42,6 +42,7 @@ class Publicacao(Base):
     nome_ato: Mapped[str]
     identificador_link: Mapped[str] = mapped_column(unique=True)
     link: Mapped[str]
+    conteudo_link: Mapped[str] = mapped_column(nullable=True)
 
     poder = relationship(Poder)
     adm_direta = relationship(AdministracaoDireta)
