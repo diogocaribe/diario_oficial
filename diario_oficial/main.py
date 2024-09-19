@@ -1,7 +1,7 @@
 from raspar_doe import coleta_doe_data
 import datetime
 from dados import doe_bruto, publicacao
-from transformacao import get_conteudo_texto_link
+from transformacao import get_conteudo_texto_link, processar_atos
 
 data_inicial = datetime.date(2016, 1, 5)  # 2024, 3, 15 tem um caso especial
 data_final = datetime.date(2016, 1, 30)
@@ -22,7 +22,7 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
 
         dados = doe_bruto.explodir_doe_bruto_json(data=data_inicial)
         try:
-            publicacao.save_data(dados)          
+            publicacao.save_data(dados)
         except Exception as e:
             # Trata quaisquer outros erros não esperados
             print(f"Erro inesperado: {e}")
@@ -35,6 +35,10 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
             texto = get_conteudo_texto_link(link.link)
             publicacao.update_conteudo_link(id_publicacao=link.id, conteudo_link=texto)
 
+        lista_conteudo_link = publicacao.get_conteudo_link()
+
+        for conteudo in lista_conteudo_link:
+            processar_atos(str(conteudo[0]))
 
         data_inicial += datetime.timedelta(days=1)
 

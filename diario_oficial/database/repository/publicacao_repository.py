@@ -58,3 +58,15 @@ class PublicacaoRepository:
             except Exception as exception:
                 db.session.rollback()
                 raise exception
+
+    def get_conteudo_link(self):
+        with DBConnectionHandler() as db:
+            try:
+                # Adicione todas as instâncias à sessão
+                resultado = (
+                    db.session.query(Publicacao.conteudo_link).all()
+                )
+                # Commit a transação
+                return resultado
+            except Exception as exception:
+                raise exception
