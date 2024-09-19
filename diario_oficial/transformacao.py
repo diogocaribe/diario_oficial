@@ -23,7 +23,7 @@ def get_conteudo_texto_link(url: str) -> str:
         print(f'Erro ao acessar a página: {response.status_code}')
 
 
-def separar_atos_e_editais(texto):
+def separar_ato(texto):
     # Padrão para identificar o início de um ato (portaria, retificação, edital)
     termos = 'PORTARIA|Retificação|EDITAL DE NOTIFICAÇÃO|EDITAL|EDITAL DE CONVOCAÇÃO|ERRATA referente|RESUMO|AVISO DE CONSULTA PÚBLICA|AUTORIZAÇÃO AVISO DE CONSULTA PÚBLICA|RESOLUÇÃO|EXTRATO|CONVOCAÇÃO'
     padrao_ato = rf'({termos})\s+(?:Nº\s+[\d.]+(?:/\d{4})?|\s+DE\s+[\d\s]+DE\s+[\w]+\s+DE\s+\d{4})?'
@@ -45,7 +45,7 @@ def separar_atos_e_editais(texto):
 
 # Função para processar e exibir os atos separados
 def processar_atos(texto):
-    atos = separar_atos_e_editais(texto)
+    atos = separar_ato(texto)
     for i, ato in enumerate(atos, 1):
         print(f"\n{'='*80}\n{ato}\n")
 

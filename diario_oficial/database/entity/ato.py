@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
-# from diario_oficial.database.entity.publicacao import Publicacao
+from diario_oficial.database.entity.publicacao import Publicacao
 from ..configs.base import Base
 
 
@@ -19,6 +19,7 @@ class Ato(Base):
     publicacao_id: Mapped[int] = mapped_column(ForeignKey('processing.publicacao.id'), nullable=False)
     conteudo_ato: Mapped[str] = mapped_column(nullable=True)
 
+    publicacao = relationship(Publicacao)
 
     def __repr__(self):
         return f'Ato [publicacao={self.publicacao_id}, ato={self.conteudo_ato}]'

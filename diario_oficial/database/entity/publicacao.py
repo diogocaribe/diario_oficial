@@ -8,6 +8,7 @@ from diario_oficial.database.entity.dominio import (
     AdministracaoIndireta
 )
 from diario_oficial.database.entity.doe_bruto import DiarioOficialBruto
+# from diario_oficial.database.entity.ato import Ato
 
 
 from ..configs.base import Base

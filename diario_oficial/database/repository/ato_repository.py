@@ -1,28 +1,20 @@
-from .doe_bruto_repository import DiarioOficialBrutoRepository
-from ..configs.connection import DBConnectionHandler
-from ..entity.ato import Ato
-
-doe_bruto_repository = DiarioOficialBrutoRepository()
+from database.configs.connection import DBConnectionHandler
+from database.entity.ato import Ato
 
 
 class AtoRepository:
     """Publicação é entendido como cada link do DOE.
     Nesse link pode existir um ou mais atos (portarias, etc.)
     """
-
     def save_data(self, dados):
-        atos = []
-
-        for item in dados:
-            ato = Ato(**item)
-            # print(publicacao)
-            atos.append(ato)
-            print(ato)
+        ato = Ato(**dados)
+        # print(publicacao)
+        print(ato)
 
         with DBConnectionHandler() as db:
             try:
                 # Adicione todas as instâncias à sessão
-                db.session.add_all(atos)
+                db.session.add(ato)
                 # Commit a transação
                 db.session.commit()
                 print('Dados inseridos com sucesso!')

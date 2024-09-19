@@ -1,7 +1,7 @@
 from raspar_doe import coleta_doe_data
 import datetime
-from dados import doe_bruto, publicacao
-from transformacao import get_conteudo_texto_link, processar_atos
+from dados import doe_bruto, publicacao, ato
+from transformacao import get_conteudo_texto_link, separar_ato, processar_atos
 
 data_inicial = datetime.date(2016, 1, 5)  # 2024, 3, 15 tem um caso especial
 data_final = datetime.date(2016, 1, 30)
@@ -35,10 +35,16 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
             texto = get_conteudo_texto_link(link.link)
             publicacao.update_conteudo_link(id_publicacao=link.id, conteudo_link=texto)
 
-        lista_conteudo_link = publicacao.get_conteudo_link()
+        lista_conteudo_link = publicacao.get_id_conteudo_link()
 
-        for conteudo in lista_conteudo_link:
-            processar_atos(str(conteudo[0]))
+        for id, conteudo in lista_conteudo_link:
+            atos = separar_ato(conteudo)
+            for i, ato_ in enumerate(atos, 1):
+                print(f"\n{id}\n{'='*80}\n{ato}\n")
+                
+                # ato__ = {'pubelicacao_id': id, 'conteudo_ato': ato_}
+                # ato.save_data(ato__)
+
 
         data_inicial += datetime.timedelta(days=1)
 
