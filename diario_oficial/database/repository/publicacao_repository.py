@@ -59,12 +59,12 @@ class PublicacaoRepository:
                 db.session.rollback()
                 raise exception
 
-    def get_conteudo_link(self):
+    def get_id_conteudo_link(self):
         with DBConnectionHandler() as db:
             try:
                 # Adicione todas as instâncias à sessão
                 resultado = (
-                    db.session.query(Publicacao.conteudo_link).all()
+                    db.session.query(Publicacao.id, Publicacao.conteudo_link).all()
                 )
                 # Commit a transação
                 return resultado
