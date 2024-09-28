@@ -3,8 +3,8 @@ import datetime
 from dados import doe_bruto, publicacao, ato
 from transformacao import get_conteudo_texto_link, separar_ato, processar_atos
 
-data_inicial = datetime.date(2016, 1, 5)  # 2024, 3, 15 tem um caso especial
-data_final = datetime.date(2016, 1, 30)
+data_inicial = datetime.date(2012, 1, 5)  # 2024, 3, 15 tem um caso especial
+data_final = datetime.date(2012, 1, 30)
 
 
 # TODO Trazer o loop para cá e colocar o processamento da coleta e do resto do pipeline independente
@@ -42,9 +42,8 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
             for i, ato_ in enumerate(atos, 1):
                 print(f"\n{id}\n{'='*80}\n{ato}\n")
                 
-                # ato__ = {'pubelicacao_id': id, 'conteudo_ato': ato_}
-                # ato.save_data(ato__)
-
+                ato__ = {'publicacao_id': id, 'conteudo_ato': ato_}
+                ato.save_data(ato__)
 
         data_inicial += datetime.timedelta(days=1)
 
