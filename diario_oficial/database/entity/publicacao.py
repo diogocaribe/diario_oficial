@@ -45,12 +45,12 @@ class Publicacao(Base):
     link: Mapped[str]
     conteudo_link: Mapped[str] = mapped_column(nullable=True)
 
-    poder = relationship(Poder)
-    adm_direta = relationship(AdministracaoDireta)
-    adm_indireta = relationship(AdministracaoIndireta)
-    divisao_adm_direta = relationship(DivisaoAdministracaoDireta)
-    tipo_publicacao = relationship(TipoPublicacao)
-    doe_bruto = relationship(DiarioOficialBruto)
+    poder = relationship("Poder", backref='processing.publicacao')
+    adm_direta = relationship("AdministracaoDireta", backref='processing.publicacao')
+    adm_indireta = relationship("AdministracaoIndireta", backref='processing.publicacao')
+    divisao_adm_direta = relationship("DivisaoAdministracaoDireta", backref='processing.publicacao')
+    tipo_publicacao = relationship("TipoPublicacao", backref='processing.publicacao')
+    doe_bruto = relationship("DiarioOficialBruto", backref='processing.publicacao')
 
     def __repr__(self):
         return f'Publicação [Identificador={self.doe_bruto_id}, nome={self.nome_ato}]'

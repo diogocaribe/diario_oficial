@@ -1,6 +1,10 @@
 import json
 from database.configs.connection import DBConnectionHandler
 from database.entity.doe_bruto import DiarioOficialBruto
+from database.entity.publicacao import Publicacao
+from database.entity.dominio import Poder
+
+
 from datetime import datetime
 
 from sqlalchemy import text

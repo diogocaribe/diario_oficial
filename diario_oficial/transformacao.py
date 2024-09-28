@@ -5,7 +5,8 @@ import re
 
 def get_conteudo_texto_link(url: str) -> str:
     # Fazer uma requisição para obter o conteúdo da página
-    response = requests.get(url)
+    # TODO Verificar o ssl no ambiente de produção.
+    response = requests.get(url, verify=False)
 
     # Verificar se a requisição foi bem-sucedida
     if response.status_code == 200:
