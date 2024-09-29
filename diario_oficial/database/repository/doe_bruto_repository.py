@@ -29,7 +29,6 @@ class DiarioOficialBrutoRepository:
                 )
                 return result
             except Exception as exception:
-                db.session.rollback()
                 raise exception
 
     def save_data(self, **kwargs):
@@ -93,16 +92,16 @@ class DiarioOficialBrutoRepository:
                         doe_bruto_id,
                         poder,
                         adm_direta,
-                        CASE 
+                        CASE
                             WHEN divisao_adm_direta IN (SELECT dad.nome FROM dominio.divisao_adm_direta dad) THEN divisao_adm_direta
                         END AS divisao_adm_direta,
-                        CASE 
+                        CASE
                             WHEN divisao_adm_direta IN (SELECT ai.nome FROM dominio.adm_indireta ai) THEN divisao_adm_direta
                         END AS adm_indireta,
-                        CASE 
+                        CASE
                             WHEN divisao_adm_direta IN (SELECT tp.nome FROM dominio.tipo_publicacao tp) THEN divisao_adm_direta
                         END AS tipo_publicacao,
-                        CASE 
+                        CASE
                             WHEN
                                 jsonb_typeof(_json) = 'array' THEN _json
                             ELSE
@@ -120,7 +119,7 @@ class DiarioOficialBrutoRepository:
                     tp.id AS tipo_publicacao_id,
                     jsonb_array_elements_text(_json)::jsonb->>'nome' AS nome_ato,
                     jsonb_array_elements_text(_json)::jsonb->>'identificador' AS identificador_link,
-                    jsonb_array_elements_text(_json)::jsonb->>'link' AS link 
+                    jsonb_array_elements_text(_json)::jsonb->>'link' AS link
                 FROM tratando_divisao_adm_direta
                 LEFT JOIN dominio.poder p ON p.nome = poder
                 LEFT JOIN dominio.adm_direta ad ON ad.nome = adm_direta
@@ -167,5 +166,4 @@ class DiarioOficialBrutoRepository:
                 result = [dict(zip(columns, row)) for row in result.fetchall()]
                 return result
             except Exception as exception:
-                db.session.rollback()
                 raise exception

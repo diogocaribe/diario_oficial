@@ -7,5 +7,6 @@
     "python.testing.autoTestDiscoverOnSaveEnabled": false,
     "python.analysis.extraPaths": [
         "./diario_oficial"
-    ]
+    ],
+    "editor.rulers": [100]
 }

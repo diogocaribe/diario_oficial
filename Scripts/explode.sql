@@ -110,3 +110,15 @@ LEFT JOIN dominio.adm_direta ad ON p.adm_direta_id = ad.id
 LEFT JOIN dominio.adm_indireta ai ON p.adm_indireta_id = ai.id
 LEFT JOIN dominio.divisao_adm_direta dad ON p.divisao_adm_direta_id = dad.id
 LEFT JOIN dominio.tipo_publicacao tp ON p.tipo_publicacao_id = tp.id
+
+
+
+SELECT * FROM pg_stat_activity;
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE client_addr  = '127.0.0.1';
+
+DELETE FROM processing.ato;
+SELECT setval('processing.ato_id_seq', 1, false);
+
+SELECT count(*) FROM processing.ato;
+
+

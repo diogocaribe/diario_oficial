@@ -15,12 +15,7 @@ class PublicacaoRepository:
 
         for item in dados:
             publicacao = Publicacao(**item)
-            # print(publicacao)
-
             publicacoes.append(publicacao)
-
-            print(publicacoes)
-
         with DBConnectionHandler() as db:
             try:
                 # Adicione todas as instâncias à sessão
@@ -43,18 +38,14 @@ class PublicacaoRepository:
                 return resultado
             except Exception as exception:
                 raise exception
-            
 
     def update_conteudo_link(self, id_publicacao: int, conteudo_link: str):
         with DBConnectionHandler() as db:
             try:
                 objeto = db.session.query(Publicacao).filter(Publicacao.id == id_publicacao).one()
                 objeto.conteudo_link = conteudo_link
-                print(conteudo_link)
                 # Commit a transação
                 db.session.commit()
-                print('Conteúdo inseridos com sucesso!')
-
             except Exception as exception:
                 db.session.rollback()
                 raise exception
