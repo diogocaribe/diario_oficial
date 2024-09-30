@@ -18,6 +18,7 @@ class Poder(Base):
 
     publicacao = relationship('Publicacao', back_populates='poder', cascade='all, delete-orphan')
 
+
 class AdministracaoDireta(Base):
     """Tabela para registro do dominio da adm direta (Secretarias)
         Ex.
@@ -35,7 +36,9 @@ class AdministracaoDireta(Base):
     nome: Mapped[str] = mapped_column(nullable=False, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
 
-    publicacao = relationship('Publicacao', back_populates='adm_direta', cascade='all, delete-orphan')
+    publicacao = relationship(
+        'Publicacao', back_populates='adm_direta', cascade='all, delete-orphan'
+    )
 
 
 class AdministracaoIndireta(Base):
@@ -54,7 +57,9 @@ class AdministracaoIndireta(Base):
     nome: Mapped[str] = mapped_column(nullable=True, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
 
-    publicacao = relationship('Publicacao', back_populates='adm_indireta', cascade='all, delete-orphan')
+    publicacao = relationship(
+        'Publicacao', back_populates='adm_indireta', cascade='all, delete-orphan'
+    )
 
 
 class DivisaoAdministracaoDireta(Base):
@@ -73,10 +78,12 @@ class DivisaoAdministracaoDireta(Base):
     nome: Mapped[str] = mapped_column(nullable=True, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
 
-    publicacao = relationship('Publicacao', back_populates='divisao_adm_direta', cascade='all, delete-orphan')
+    publicacao = relationship(
+        'Publicacao', back_populates='divisao_adm_direta', cascade='all, delete-orphan'
+    )
+
 
 class TipoPublicacao(Base):
-
     __tablename__ = 'tipo_publicacao'
     __table_args__ = {'schema': 'dominio'}
 
@@ -84,8 +91,6 @@ class TipoPublicacao(Base):
     nome: Mapped[str] = mapped_column(nullable=True, unique=True)
     sigla: Mapped[str] = mapped_column(nullable=True)
 
-    publicacao = relationship('Publicacao', back_populates='tipo_publicacao', cascade='all, delete-orphan')
-
-
-
-
+    publicacao = relationship(
+        'Publicacao', back_populates='tipo_publicacao', cascade='all, delete-orphan'
+    )

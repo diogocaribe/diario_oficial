@@ -5,6 +5,7 @@ Revises: dfae75d03e16
 Create Date: 2024-09-02 17:00:39.909988
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -52,7 +53,7 @@ def upgrade() -> None:
     # Itera sobre cada valor e executa o INSERT
     for nome in nomes:
         op.execute(
-            sa.text(f'INSERT INTO dominio.poder (nome) VALUES (\'{nome}\')'),
+            sa.text(f"INSERT INTO dominio.poder (nome) VALUES ('{nome}')"),
         )
 
 

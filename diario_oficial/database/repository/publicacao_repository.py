@@ -54,9 +54,7 @@ class PublicacaoRepository:
         with DBConnectionHandler() as db:
             try:
                 # Adicione todas as instâncias à sessão
-                resultado = (
-                    db.session.query(Publicacao.id, Publicacao.conteudo_link).all()
-                )
+                resultado = db.session.query(Publicacao.id, Publicacao.conteudo_link).all()
                 # Commit a transação
                 return resultado
             except Exception as exception:

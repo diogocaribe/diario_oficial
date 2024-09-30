@@ -133,7 +133,7 @@ def upgrade() -> None:
     # Itera sobre cada valor e executa o INSERT
     for nome in nomes:
         op.execute(
-            sa.text(f'INSERT INTO dominio.poder (nome) VALUES (\'{nome}\')'),
+            sa.text(f"INSERT INTO dominio.poder (nome) VALUES ('{nome}')"),
         )
 
     # ### end Alembic commands ###

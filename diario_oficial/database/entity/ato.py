@@ -16,10 +16,12 @@ class Ato(Base):
     __table_args__ = {'schema': 'processing'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
-    publicacao_id: Mapped[int] = mapped_column(ForeignKey('processing.publicacao.id',  ondelete="CASCADE"), nullable=False)
+    publicacao_id: Mapped[int] = mapped_column(
+        ForeignKey('processing.publicacao.id', ondelete='CASCADE'), nullable=False
+    )
     conteudo_ato: Mapped[str] = mapped_column(nullable=True)
 
-    publicacao = relationship("Publicacao", backref='processing.ato')
+    publicacao = relationship('Publicacao', backref='processing.ato')
 
     def __repr__(self):
         return f'Ato [publicacao={self.publicacao_id}, ato={self.conteudo_ato}]'

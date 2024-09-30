@@ -5,7 +5,7 @@ from diario_oficial.database.entity.dominio import (
     AdministracaoDireta,
     Poder,
     TipoPublicacao,
-    AdministracaoIndireta
+    AdministracaoIndireta,
 )
 from diario_oficial.database.entity.doe_bruto import DiarioOficialBruto
 # from diario_oficial.database.entity.ato import Ato
@@ -45,12 +45,12 @@ class Publicacao(Base):
     link: Mapped[str]
     conteudo_link: Mapped[str] = mapped_column(nullable=True)
 
-    poder = relationship("Poder", backref='processing.publicacao')
-    adm_direta = relationship("AdministracaoDireta", backref='processing.publicacao')
-    adm_indireta = relationship("AdministracaoIndireta", backref='processing.publicacao')
-    divisao_adm_direta = relationship("DivisaoAdministracaoDireta", backref='processing.publicacao')
-    tipo_publicacao = relationship("TipoPublicacao", backref='processing.publicacao')
-    doe_bruto = relationship("DiarioOficialBruto", backref='processing.publicacao')
+    poder = relationship('Poder', backref='processing.publicacao')
+    adm_direta = relationship('AdministracaoDireta', backref='processing.publicacao')
+    adm_indireta = relationship('AdministracaoIndireta', backref='processing.publicacao')
+    divisao_adm_direta = relationship('DivisaoAdministracaoDireta', backref='processing.publicacao')
+    tipo_publicacao = relationship('TipoPublicacao', backref='processing.publicacao')
+    doe_bruto = relationship('DiarioOficialBruto', backref='processing.publicacao')
 
     def __repr__(self):
         return f'Publicação [Identificador={self.doe_bruto_id}, nome={self.nome_ato}]'

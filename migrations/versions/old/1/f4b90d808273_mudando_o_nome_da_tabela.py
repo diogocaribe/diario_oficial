@@ -48,7 +48,7 @@ def upgrade() -> None:
         source_schema='processing',
         referent_schema='dominio',
     )
-    
+
     op.execute(
         sa.text("""
             DELETE FROM dominio.orgao_adm_indireta

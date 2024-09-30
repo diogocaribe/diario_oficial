@@ -15,11 +15,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 import util as u
-from database.entity.doe_bruto import DiarioOficialBruto
 from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-from settings import Settings
 from dados import doe_bruto
 
 # Primeiro data do diário oficial 05/01/2016??
@@ -454,10 +450,10 @@ def coleta_doe_data(data: str):
             print(exception)
 
         dados = DiarioOficialBrutoRepository()
-        try:    
+        try:
             dados.save_data(**a)
         except UnboundLocalError as e:
-                print(f"Erro: {e}") 
+            print(f'Erro: {e}')
 
 
 # carga_banco(data=data_inicial)

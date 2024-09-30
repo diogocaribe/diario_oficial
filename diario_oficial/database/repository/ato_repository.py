@@ -6,6 +6,7 @@ class AtoRepository:
     """Publicação é entendido como cada link do DOE.
     Nesse link pode existir um ou mais atos (portarias, etc.)
     """
+
     def save_data(self, dados):
         ato = Ato(**dados)
         with DBConnectionHandler() as db:
