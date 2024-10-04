@@ -6,7 +6,7 @@ import re
 def get_conteudo_texto_link(url: str) -> str:
     # Fazer uma requisição para obter o conteúdo da página
     # TODO Verificar o ssl no ambiente de produção.
-    response = requests.get(url, verify=False)
+    response = requests.get(url, verify=True)
 
     # Verificar se a requisição foi bem-sucedida
     if response.status_code == 200:
@@ -26,16 +26,15 @@ def get_conteudo_texto_link(url: str) -> str:
 
 def separar_ato(texto):
     # Padrão para identificar o início de um ato (portaria, retificação, edital)
-    termos = """PORTARIA Nº \d{1,3}\.\d{3}/\d{4} - Retificar a PORTARIA|PORTARIA|
-                PORTARIA \d{1,3}\.\d{3}/\d{4} - Revogar, a partir desta| # TODO não esta funcionando esse regex
-                Retificação|
-                EDITAL DE CONVOCAÇÃO|EDITAL DE NOTIFICAÇÃO|EDITAL DE PORTARIA CONJUNTA|EDITAL|
-                ERRATA referente|
-                RESUMO|
+    termos = """PORTARIA\nNº \d.....|PORTARIA|
+                EDITAL DE CONVOCAÇÃO|EDITAL DE NOTIFICAÇÃO|EDITAL DE PORTARIA CONJUNTA|EDITAL|EDITAL\nDE NOTIFICAÇÃO|
+                RETIFICAÇÃO|
+                ERRATA REFERENTE|
+                RESUMO|RESUMO DO TERMO DE COMPROMISSO|
                 AVISO DE CONSULTA PÚBLICA|AUTORIZAÇÃO AVISO DE CONSULTA PÚBLICA|
                 RESOLUÇÃO|
                 EXTRATO|
-                CONVOCAÇÃO
+                CONVOCAÇÃO|
     """
     padrao_ato = rf'({termos})\s+(?:Nº\s+[\d.]+(?:/\d{4})?|\s+DE\s+[\d\s]+DE\s+[\w]+\s+DE\s+\d{4})?'
 

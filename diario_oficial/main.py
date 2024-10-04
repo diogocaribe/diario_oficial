@@ -4,8 +4,8 @@ from dados import doe_bruto, publicacao, ato
 from transformacao import get_conteudo_texto_link, separar_ato
 
 # Inicio 25/07/2015
-data_inicial = datetime.date(2012, 1, 1)  # 2024, 3, 15 tem um caso especial
-data_final = datetime.date(2012, 3, 30)
+data_inicial = datetime.date(2024, 1, 1)  # 2024, 3, 15 tem um caso especial
+data_final = datetime.date(2024, 12, 31)
 
 
 # TODO Trazer o loop para cá e colocar o processamento da coleta e do resto do pipeline independente
