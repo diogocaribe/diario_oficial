@@ -6,7 +6,7 @@ import re
 def get_conteudo_texto_link(url: str) -> str:
     # Fazer uma requisição para obter o conteúdo da página
     # TODO Verificar o ssl no ambiente de produção.
-    response = requests.get(url, verify=True)
+    response = requests.get(url, verify=False)
 
     # Verificar se a requisição foi bem-sucedida
     if response.status_code == 200:
@@ -26,20 +26,23 @@ def get_conteudo_texto_link(url: str) -> str:
 
 def separar_ato(texto):
     # Padrão para identificar o início de um ato (portaria, retificação, edital)
-    termos = """PORTARIA\nNº \d.....|PORTARIA|
-                EDITAL DE CONVOCAÇÃO|EDITAL DE NOTIFICAÇÃO|EDITAL DE PORTARIA CONJUNTA|EDITAL|EDITAL\nDE NOTIFICAÇÃO|
+    termos = """PORTARIA\s+N[ºo]\s+\d{1,3}(?:\.\d{3})?/\d{4}\s+-\s+Retificar\s+a\s+PORTARIA\s+N[ºo]\s+\d{1,3}(?:\.\d{3})?/\d{4}|PORTARIA\s*Nº\s*\d{2}.\d{3}/\d{4}\s+.*\s*Revogar.*\s*.*PORTARIA|
+                PORTARIA Nº \d{2}.\d{3}/\d{4}|PORTARIA\s*Nº\s*\d{1,2}.\d{1,3}\s+DE\s+\d{1,2}.*\d{4}|
+                PORTARIA|
+                EDITAL\s*DE\s+CONVOCAÇÃO|EDITAL\s*DE\s*NOTIFICAÇÃO|EDITAL\s*DE\s*PORTARIA\s*CONJUNTA|
+                EDITAL|
                 RETIFICAÇÃO|
                 ERRATA REFERENTE|
                 RESUMO|RESUMO DO TERMO DE COMPROMISSO|
                 AVISO DE CONSULTA PÚBLICA|AUTORIZAÇÃO AVISO DE CONSULTA PÚBLICA|
                 RESOLUÇÃO|
                 EXTRATO|
-                CONVOCAÇÃO|
+                CONVOCAÇÃO
     """
-    padrao_ato = rf'({termos})\s+(?:Nº\s+[\d.]+(?:/\d{4})?|\s+DE\s+[\d\s]+DE\s+[\w]+\s+DE\s+\d{4})?'
+    padrao_ato = rf'({termos})'
 
     # Encontrar todos os inícios de atos
-    inicios_atos = list(re.finditer(padrao_ato, texto))
+    inicios_atos = list(re.finditer(padrao_ato, texto, re.MULTILINE ))
 
     atos_separados = []
 
