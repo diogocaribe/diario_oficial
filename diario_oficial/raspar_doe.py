@@ -21,8 +21,8 @@ from dados import doe_bruto
 # Primeiro data do diário oficial 05/01/2016??
 
 site_link = 'https://dool.egba.ba.gov.br/'
-data_inicial = datetime.date(2024, 1, 15)  # 2024, 3, 15 tem um caso especial
-data_final = datetime.date(2024, 1, 25)
+# data_inicial = datetime.date(2024, 1, 15)  # 2024, 3, 15 tem um caso especial
+# data_final = datetime.date(2024, 1, 25)
 
 
 chrome_options = webdriver.ChromeOptions()

@@ -22,7 +22,7 @@ class PublicacaoRepository:
                 db.session.add_all(publicacoes)
                 # Commit a transação
                 db.session.commit()
-                print('Dados inseridos com sucesso!')
+                print('Gravando links e conteudo da publicações')
             except Exception as exception:
                 db.session.rollback()
                 raise exception
@@ -30,11 +30,9 @@ class PublicacaoRepository:
     def get_link(self):
         with DBConnectionHandler() as db:
             try:
-                # Adicione todas as instâncias à sessão
                 resultado = (
                     db.session.query(Publicacao).filter(Publicacao.conteudo_link.is_(None)).all()
                 )
-                # Commit a transação
                 return resultado
             except Exception as exception:
                 raise exception

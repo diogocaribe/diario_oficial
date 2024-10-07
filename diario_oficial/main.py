@@ -4,8 +4,9 @@ from dados import doe_bruto, publicacao, ato
 from transformacao import get_conteudo_texto_link, separar_ato
 
 # Inicio 25/07/2015
-data_inicial = datetime.date(2024, 1, 1)  # 2024, 3, 15 tem um caso especial
-data_final = datetime.date(2024, 12, 31)
+# TODO investigar 01/01/2013 para quando o doe não apresenta nada
+data_inicial = datetime.date(2019, 5, 1)  # 2024, 3, 15 tem um caso especial
+data_final = datetime.date(2019, 12, 31)
 
 
 # TODO Trazer o loop para cá e colocar o processamento da coleta e do resto do pipeline independente
@@ -19,30 +20,38 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
         data_final (str): _description_
     """
     while data_inicial <= data_final:
+        # Coleta o dado no doe (doe bruto)
         coleta_doe_data(data=data_inicial)
-
+        
+        # Separa cada publicação feita por link e conteudo do link (publicação)
         dados = doe_bruto.explodir_doe_bruto_json(data=data_inicial)
         try:
-            publicacao.save_data(dados)
+            # Não existindo dados raspados, não salvar.
+            if not dados:
+                continue
+            else:
+                print('Salvando os links')
+                publicacao.save_data(dados)
         except Exception as e:
             # Trata quaisquer outros erros não esperados
             print(f'Erro inesperado: {e}')
 
+        # Pega todos os links que não possuem conteudo
         lista_link = publicacao.get_link()
 
+        # Preenche todas as celulas com o conteudo do texto do link
         for link in lista_link:
             texto = get_conteudo_texto_link(link.link)
             publicacao.update_conteudo_link(id_publicacao=link.id, conteudo_link=texto)
 
-        lista_conteudo_link = publicacao.get_id_conteudo_link()
+            # lista_conteudo_link = publicacao.get_id_conteudo_link()
 
-        for id, conteudo in lista_conteudo_link:
-            atos = separar_ato(conteudo)
+            atos = separar_ato(texto)
             for i, ato_ in enumerate(atos, 1):
                 # TODO Os atos estão duplicando com a nova execução do script. Avaliar um valor
                 # unico para que não ocorra a repetição.
-                print(f"\n{id}\n{'='*80}\n{ato_}\n")
-                ato__ = {'publicacao_id': id, 'conteudo_ato': ato_}
+                print(f"\n{link.id}\n{'='*80}\n{ato_}\n")
+                ato__ = {'publicacao_id': link.id, 'conteudo_ato': ato_}
                 ato.save_data(ato__)
 
         data_inicial += datetime.timedelta(days=1)
