@@ -22,12 +22,12 @@ class PublicacaoRepository:
                 db.session.add_all(publicacoes)
                 # Commit a transação
                 db.session.commit()
-                print('Dados inseridos com sucesso!')
+                print('Transformação dos dados brutos em publicação salva com sucesso.')
             except Exception as exception:
                 db.session.rollback()
                 raise exception
 
-    def get_link(self):
+    def get_all(self):
         with DBConnectionHandler() as db:
             try:
                 # Adicione todas as instâncias à sessão
@@ -44,6 +44,25 @@ class PublicacaoRepository:
             try:
                 objeto = db.session.query(Publicacao).filter(Publicacao.id == id_publicacao).one()
                 objeto.conteudo_link = conteudo_link
+                # Commit a transação
+                db.session.commit()
+            except Exception as exception:
+                db.session.rollback()
+                raise exception
+
+    def update_processada_para_ato(self, id_publicacao: int):
+        """Processar cada conteúdo do link para separar em ato
+
+        Args:
+            id_publicacao (int): id da tabela publicacao
+
+        Raises:
+            exception: _description_
+        """
+        with DBConnectionHandler() as db:
+            try:
+                objeto = db.session.query(Publicacao).filter(Publicacao.id == id_publicacao).one()
+                objeto.processada_para_ato = True
                 # Commit a transação
                 db.session.commit()
             except Exception as exception:

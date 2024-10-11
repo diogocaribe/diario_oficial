@@ -451,8 +451,9 @@ def coleta_doe_data(data: str):
 
         dados = DiarioOficialBrutoRepository()
         try:
+            # TODO como tratar a existência de uma data já coletada
             dados.save_data(**a)
-        except UnboundLocalError as e:
+        except Exception as e:
             print(f'Erro: {e}')
 
 

@@ -1,8 +1,10 @@
-import json
 from database.configs.connection import DBConnectionHandler
 from database.entity.doe_bruto import DiarioOficialBruto
 from database.entity.publicacao import Publicacao
 from database.entity.dominio import Poder
+
+from sqlalchemy.exc import IntegrityError
+from psycopg import errors
 
 
 from datetime import datetime
@@ -31,6 +33,7 @@ class DiarioOficialBrutoRepository:
             except Exception as exception:
                 raise exception
 
+
     def save_data(self, **kwargs):
         """Inserindo os dados coletados do diario oficial
 
@@ -42,9 +45,18 @@ class DiarioOficialBrutoRepository:
                 dados = DiarioOficialBruto(**kwargs)
                 db.session.add(dados)
                 db.session.commit()
+            except IntegrityError as e:
+                # Verifica se a causa foi uma violação de unicidade
+                if isinstance(e.orig, errors.UniqueViolation):
+                    print("Erro: Dados brutos já coletado.")
+                    db.session.rollback()  # Reverte a transação
+                else:
+                    print(f"Outro erro de integridade: {e}")
+                    db.session.rollback()
             except Exception as exception:
                 db.session.rollback()
                 raise exception
+
 
     def explodir_doe_bruto_json(self, data: datetime.date):
         """Verificar se o diario oficial daquela data foi coletado
@@ -166,4 +178,25 @@ class DiarioOficialBrutoRepository:
                 result = [dict(zip(columns, row)) for row in result.fetchall()]
                 return result
             except Exception as exception:
+                raise exception
+
+
+    def update_doe_bruto_para_publicacao(self, id_doe: int):
+        """Realizar o update quando o processamento do doe_bruto for realizado.
+        Este processamento pega o json do doe e separa os links na tabela de publicacao
+
+        Args:
+            id_doe (int): id do doe_bruto que será atualizado
+
+        Raises:
+            exception: _description_
+        """
+        with DBConnectionHandler() as db:
+            try:
+                objeto = db.session.query(DiarioOficialBruto).filter(DiarioOficialBruto.id == id_doe).one()
+                objeto.doe_bruto_para_publicacao = True
+                # Commit a transação
+                db.session.commit()
+            except Exception as exception:
+                db.session.rollback()
                 raise exception
