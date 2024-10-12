@@ -25,19 +25,10 @@ def lista_data_processar(data_inicio: datetime, data_fim: datetime):
 
     return lista_data
 
+def pipeline(data_inicial: datetime):
+    print(f'Iniciando o processamendo de {data_inicial}')
 
-# TODO Trazer o loop para cá e colocar o processamento da coleta e do resto do pipeline independente
-# para ir preenchendo a tabela logo. Não esperar toda a coleta das datas para executar pipeline todo
-def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
-    """Esta função raspa e salva os dados no banco a partir de uma data inicial e final
-        Quando a data inicial é igual a final só executa uma única data
-
-    Args:
-        data_inicial (str): _description_
-        data_final (str): _description_
-    """
-    while data_inicial <= data_final:
-        print(f'Iniciando o processamendo de {data_inicial}')
+    try:
         coleta_doe_data(data=data_inicial)
 
         dados = doe_bruto.explodir_doe_bruto_json(data=data_inicial)
@@ -70,8 +61,8 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
                 else:
                     # TODO criar um exceção para atos que estejam vazios
                     print(f'''
-                          Não foi extraido nenhum ato da publicação. 
-                          O regex não pegou nenhum padrão na publicacao de id: {publicacao_.id}'''
+                            Não foi extraido nenhum ato da publicação. 
+                            O regex não pegou nenhum padrão na publicacao de id: {publicacao_.id}'''
                     )
                     raise Exception
             except Exception as e:
@@ -80,6 +71,22 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
                 print(f'Salvando ato da publicacao: {publicacao_.id}')
                 publicacao.update_processada_para_ato(id_publicacao=publicacao_.id)
 
+    except Exception as e:
+        print('Erro inesparado no pipeline:', e)
+
+# TODO Trazer o loop para cá e colocar o processamento da coleta e do resto do pipeline independente
+# para ir preenchendo a tabela logo. Não esperar toda a coleta das datas para executar pipeline todo
+def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
+    """Esta função raspa e salva os dados no banco a partir de uma data inicial e final
+        Quando a data inicial é igual a final só executa uma única data
+
+    Args:
+        data_inicial (str): _description_
+        data_final (str): _description_
+    """
+    while data_inicial <= data_final:
+        pipeline(data_inicial=data_inicial)
         data_inicial += datetime.timedelta(days=1)
+        
 
 coletar_dado_data_inicio_fim(data_inicial=data_inicio, data_final=data_fim)
