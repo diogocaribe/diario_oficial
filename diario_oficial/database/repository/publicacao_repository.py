@@ -1,6 +1,10 @@
+
 from .doe_bruto_repository import DiarioOficialBrutoRepository
 from ..configs.connection import DBConnectionHandler
 from ..entity.publicacao import Publicacao
+
+from sqlalchemy.exc import IntegrityError
+from psycopg import errors
 
 doe_bruto_repository = DiarioOficialBrutoRepository()
 
@@ -23,6 +27,14 @@ class PublicacaoRepository:
                 # Commit a transação
                 db.session.commit()
                 print('Transformação dos dados brutos em publicação salva com sucesso.')
+            except IntegrityError as e:
+                # Verifica se a causa foi uma violação de unicidade
+                if isinstance(e.orig, errors.UniqueViolation):
+                    print("Erro: Publicacao já processada.")
+                    db.session.rollback()  # Reverte a transação
+                else:
+                    print(f"Erro integridade publicação não identificada: {e}")
+                    db.session.rollback()
             except Exception as exception:
                 db.session.rollback()
                 raise exception

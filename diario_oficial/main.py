@@ -37,7 +37,7 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
         data_final (str): _description_
     """
     while data_inicial <= data_final:
-        print(data_inicial)
+        print(f'Iniciando o processamendo de {data_inicial}')
         coleta_doe_data(data=data_inicial)
 
         dados = doe_bruto.explodir_doe_bruto_json(data=data_inicial)
@@ -61,21 +61,25 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
             try:
                 # Separar cada publicação em atos
                 atos = separar_ato(texto)
-                for ato_ in enumerate(atos, 1):
-                    # TODO Os atos estão duplicando com a nova execução do script. Avaliar um valor
-                    # unico para que não ocorra a repetição.
-                    print(f"\n{publicacao_.id}\n{'='*80}\n{ato_[1]}\n")
-                    objeto_ato = {'publicacao_id': publicacao_.id, 'conteudo_ato': ato_[1]}
-                    ato.save_data(objeto_ato)
+                if atos:
+                    for ato_ in atos:
+                        if ato_ != '':
+                            print(f"\n{publicacao_.id}\n{'='*80}\n{ato_}\n")
+                            objeto_ato = {'publicacao_id': publicacao_.id, 'conteudo_ato': ato_}
+                            ato.save_data(objeto_ato)
+                else:
+                    # TODO criar um exceção para atos que estejam vazios
+                    print(f'''
+                          Não foi extraido nenhum ato da publicação. 
+                          O regex não pegou nenhum padrão na publicacao de id: {publicacao_.id}'''
+                    )
+                    raise Exception
             except Exception as e:
-                print('Erro ao salvar atos', e)
+                print('Erro ao salvar atos')
             else:
-                print('Sem erros')
+                print(f'Salvando ato da publicacao: {publicacao_.id}')
                 publicacao.update_processada_para_ato(id_publicacao=publicacao_.id)
 
-            
-
         data_inicial += datetime.timedelta(days=1)
-
 
 coletar_dado_data_inicio_fim(data_inicial=data_inicio, data_final=data_fim)

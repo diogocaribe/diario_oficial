@@ -173,7 +173,7 @@ def raspar_diario_oficial(data: str) -> dict:
         dict: _description_
     """
     data_ = data.strftime('%d-%m-%Y')
-    print(f'Diario oficial: {data}')
+    print(f'Raspando o Diario oficial de: {data}')
     navegador = webdriver.Chrome(options=chrome_options)
 
     # Sintaxe do wait
