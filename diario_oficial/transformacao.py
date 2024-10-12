@@ -36,8 +36,10 @@ def separar_ato(texto):
                 RESUMO|RESUMO DO TERMO DE COMPROMISSO|
                 AVISO DE CONSULTA PÚBLICA|AUTORIZAÇÃO AVISO DE CONSULTA PÚBLICA|
                 RESOLUÇÃO|
-                EXTRATO|
-                CONVOCAÇÃO
+                EXTRATO DE TERMO DE COMPROMISSO| EXTRATO|
+                CONVOCAÇÃO|
+                AUTORIZAÇÃO AVISO DE CONSULTA PÚBLICA|
+                SECRETÁRIO\s+.*\s*RESOLVE.*
     """
     padrao_ato = rf'({termos})'
 
