@@ -455,9 +455,3 @@ def coleta_doe_data(data: str):
             dados.save_data(**a)
         except Exception as e:
             print(f'Erro: {e}')
-
-
-# carga_banco(data=data_inicial)
-
-# Exemplo de como utilizar a função
-# coletar_dado_data(data_inicial=data_inicial, data_final=data_final)
