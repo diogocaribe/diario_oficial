@@ -5,8 +5,8 @@ from dados import doe_bruto, publicacao, ato
 from transformacao import get_conteudo_texto_link, separar_ato
 
 # Inicio 25/07/2015
-data_inicio = datetime.date(2024, 1, 1)  # 2024, 3, 15 tem um caso especial
-data_fim = datetime.date(2024, 12, 31)
+data_inicio = datetime.date(2024, 10, 20)  # 2024, 3, 15 tem um caso especial
+data_fim = datetime.date(2024, 10, 26)
 
 
 def lista_data_processar(data_inicio: datetime, data_fim: datetime):
@@ -25,18 +25,21 @@ def lista_data_processar(data_inicio: datetime, data_fim: datetime):
 
     return lista_data
 
-def pipeline(data_inicial: datetime):
-    print(f'Iniciando o processamendo de {data_inicial}')
+def pipeline(data: datetime):
+    print(f'Iniciando o processamendo de {data}')
+    if data >= datetime.datetime.today().date():
+        print('Data maior que a maior data disponível.')
+        return
 
     try:
-        coleta_doe_data(data=data_inicial)
+        coleta_doe_data(data=data)
 
-        dados = doe_bruto.explodir_doe_bruto_json(data=data_inicial)
+        dados = doe_bruto.explodir_doe_bruto_json(data=data)
 
         # Salvando dados do do doe bruto em publicacao
         publicacao.save_data(dados)
         # Selecionar o id a partir da data da edicao (dt_edicao)
-        id_doe_bruto = doe_bruto.check_if_date_doe_coleted(data=data_inicial).id
+        id_doe_bruto = doe_bruto.check_if_date_doe_coleted(data=data).id
         # Atualizar doe_bruto_para_pucalicaçao
         doe_bruto.update_doe_bruto_para_publicacao(id_doe=id_doe_bruto)
 
@@ -85,7 +88,7 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
         data_final (str): _description_
     """
     while data_inicial <= data_final:
-        pipeline(data_inicial=data_inicial)
+        pipeline(data=data_inicial)
         data_inicial += datetime.timedelta(days=1)
         
 
