@@ -33,8 +33,9 @@ class DiarioOficialBruto(Base):
         type_=JSONB, nullable=True, comment='Dados extraídos do DOE em formato json.'
     )
 
-    doe_bruto_para_publicacao: Mapped[bool] = mapped_column(nullable=True,
-        comment='Indicação se ocorreu o processamento do doe bruto para publicacao.')
+    doe_bruto_para_publicacao: Mapped[bool] = mapped_column(
+        nullable=True, comment='Indicação se ocorreu o processamento do doe bruto para publicacao.'
+    )
 
     def __repr__(self):
         return f'Dados Diário Oficial Bruto [edicao={self.nro_edicao}, data={self.dt_edicao}]'

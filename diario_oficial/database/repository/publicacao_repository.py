@@ -1,4 +1,3 @@
-
 from .doe_bruto_repository import DiarioOficialBrutoRepository
 from ..configs.connection import DBConnectionHandler
 from ..entity.publicacao import Publicacao
@@ -30,10 +29,10 @@ class PublicacaoRepository:
             except IntegrityError as e:
                 # Verifica se a causa foi uma violação de unicidade
                 if isinstance(e.orig, errors.UniqueViolation):
-                    print("Erro: Publicacao já processada.")
+                    print('Erro: Publicacao já processada.')
                     db.session.rollback()  # Reverte a transação
                 else:
-                    print(f"Erro integridade publicação não identificada: {e}")
+                    print(f'Erro integridade publicação não identificada: {e}')
                     db.session.rollback()
             except Exception as exception:
                 db.session.rollback()

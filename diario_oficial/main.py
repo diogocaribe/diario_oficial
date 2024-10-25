@@ -25,6 +25,7 @@ def lista_data_processar(data_inicio: datetime, data_fim: datetime):
 
     return lista_data
 
+
 def pipeline(data: datetime):
     print(f'Iniciando o processamendo de {data}')
     if data >= datetime.datetime.today().date():
@@ -49,7 +50,7 @@ def pipeline(data: datetime):
         for publicacao_ in lista_publicacao:
             # Coletando o conteudo texual do link
             texto = get_conteudo_texto_link(publicacao_.link)
-            # Gravando o conteudo textual no banco 
+            # Gravando o conteudo textual no banco
             publicacao.update_conteudo_link(id_publicacao=publicacao_.id, conteudo_link=texto)
 
             try:
@@ -63,10 +64,9 @@ def pipeline(data: datetime):
                             ato.save_data(objeto_ato)
                 else:
                     # TODO criar um exceção para atos que estejam vazios
-                    print(f'''
+                    print(f"""
                             Não foi extraido nenhum ato da publicação. 
-                            O regex não pegou nenhum padrão na publicacao de id: {publicacao_.id}'''
-                    )
+                            O regex não pegou nenhum padrão na publicacao de id: {publicacao_.id}""")
                     raise Exception
             except Exception as e:
                 print('Erro ao salvar atos')
@@ -76,6 +76,7 @@ def pipeline(data: datetime):
 
     except Exception as e:
         print('Erro inesparado no pipeline:', e)
+
 
 # TODO Trazer o loop para cá e colocar o processamento da coleta e do resto do pipeline independente
 # para ir preenchendo a tabela logo. Não esperar toda a coleta das datas para executar pipeline todo
@@ -90,6 +91,6 @@ def coletar_dado_data_inicio_fim(data_inicial: str, data_final: str):
     while data_inicial <= data_final:
         pipeline(data=data_inicial)
         data_inicial += datetime.timedelta(days=1)
-        
+
 
 coletar_dado_data_inicio_fim(data_inicial=data_inicio, data_final=data_fim)

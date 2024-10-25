@@ -8,7 +8,7 @@ def get_conteudo_texto_link(url: str) -> str:
     # Fazer uma requisição para obter o conteúdo da página
     # TODO Verificar o ssl no ambiente de produção.
     # Suprime avisos de verificação de SSL
-    warnings.filterwarnings("ignore", message="Unverified HTTPS request")
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
     response = requests.get(url, verify=False)
 
     # Verificar se a requisição foi bem-sucedida

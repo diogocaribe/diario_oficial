@@ -33,7 +33,6 @@ class DiarioOficialBrutoRepository:
             except Exception as exception:
                 raise exception
 
-
     def save_data(self, **kwargs):
         """Inserindo os dados coletados do diario oficial
 
@@ -48,15 +47,14 @@ class DiarioOficialBrutoRepository:
             except IntegrityError as e:
                 # Verifica se a causa foi uma violação de unicidade
                 if isinstance(e.orig, errors.UniqueViolation):
-                    print("Erro: Dados brutos já coletado.")
+                    print('Erro: Dados brutos já coletado.')
                     db.session.rollback()  # Reverte a transação
                 else:
-                    print(f"Outro erro de integridade: {e}")
+                    print(f'Outro erro de integridade: {e}')
                     db.session.rollback()
             except Exception as exception:
                 db.session.rollback()
                 raise exception
-
 
     def explodir_doe_bruto_json(self, data: datetime.date):
         """Verificar se o diario oficial daquela data foi coletado
@@ -180,7 +178,6 @@ class DiarioOficialBrutoRepository:
             except Exception as exception:
                 raise exception
 
-
     def update_doe_bruto_para_publicacao(self, id_doe: int):
         """Realizar o update quando o processamento do doe_bruto for realizado.
         Este processamento pega o json do doe e separa os links na tabela de publicacao
@@ -193,7 +190,11 @@ class DiarioOficialBrutoRepository:
         """
         with DBConnectionHandler() as db:
             try:
-                objeto = db.session.query(DiarioOficialBruto).filter(DiarioOficialBruto.id == id_doe).one()
+                objeto = (
+                    db.session.query(DiarioOficialBruto)
+                    .filter(DiarioOficialBruto.id == id_doe)
+                    .one()
+                )
                 objeto.doe_bruto_para_publicacao = True
                 # Commit a transação
                 db.session.commit()
