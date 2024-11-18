@@ -44,6 +44,7 @@ class DiarioOficialBrutoRepository:
                 dados = DiarioOficialBruto(**kwargs)
                 db.session.add(dados)
                 db.session.commit()
+                print('Dados brutos salvos.')
             except IntegrityError as e:
                 # Verifica se a causa foi uma violação de unicidade
                 if isinstance(e.orig, errors.UniqueViolation):

@@ -68,7 +68,7 @@ def pipeline(data: datetime):
                             Não foi extraido nenhum ato da publicação. 
                             O regex não pegou nenhum padrão na publicacao de id: {publicacao_.id}""")
                     raise Exception
-            except Exception as e:
+            except Exception:
                 print('Erro ao salvar atos')
             else:
                 print(f'Salvando ato da publicacao: {publicacao_.id}')
