@@ -2,8 +2,9 @@ import typer
 from datetime import datetime
 from rich.pretty import Pretty
 from rich import print
-from raspar_doe import raspar_diario_oficial, doe_bruto
+from raspar_doe import raspar_diario_oficial, doe_bruto, coleta_doe_data
 from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
+from dados import publicacao
 
 from contextlib import redirect_stdout
 from io import StringIO
@@ -12,14 +13,16 @@ app = typer.Typer()
 
 
 @app.command()
-def salvar_doe_bruto_db(data: str, save_db: bool = False):
+def raspar_doe_bruto(data: str, save_db: bool = False):
     """Esta função raspa dos dados e salva no banco de dados
-    
-    Ex: python diario_oficial/cli.py '12-11-2024'
 
-    Args:
-        data (str): Data 'DD-MM-YYYY'
+    Args: \n
+        data (str): Data 'DD-MM-YYYY' \n
         save_db (bool, optional): Indicar se salva ou não no banco. Padrão é False.
+    
+    Examples: \n
+        >>> python diario_oficial/cli.py '12-11-2024' \n
+        >>> python diario_oficial/cli.py '12-11-2024' --save-db
     """
     print(f'Raspando os dados do Diário Oficial Bahia de {data}')
     # with redirect_stdout(StringIO()):
@@ -27,7 +30,6 @@ def salvar_doe_bruto_db(data: str, save_db: bool = False):
         data = datetime.strptime(data, '%d-%m-%Y')
         resultado = raspar_diario_oficial(data)  # Os prints serão suprimidos
         # Exibe apenas o retorno final, sem os prints internos da função
-                
     print(Pretty(resultado))
     if save_db:
         dados = DiarioOficialBrutoRepository()
@@ -36,6 +38,27 @@ def salvar_doe_bruto_db(data: str, save_db: bool = False):
             dados.save_data(**resultado)
         except Exception as e:
             print(f'Erro: {e}')
+
+
+@app.command()
+def transformar_doe_bruto_publicacao(data: str, tranformcar_publicacao: bool = False, save_db: bool = False):
+    """
+    Esta função pega todos os dados brutos não processados e 
+    transforma em publicação (tabela publicacao do banco de dados).
+
+    Args:
+        data (str): Data 'DD-MM-YYYY'
+        tranformcar_publicacao (bool, optional): Realiza a transformação dos dados brutos em 
+        publicação. Defaults to False.
+    """
+    print('Transformando dados brutos em publicações.')
+    if tranformcar_publicacao:
+        # coleta_doe_data(data=data)
+        dados = doe_bruto.explodir_doe_bruto_json(data=data)
+        print(dados)
+        if save_db:
+            # Salvando dados do do doe bruto em publicacao
+            publicacao.save_data(dados)
 
 
 if __name__ == '__main__':
