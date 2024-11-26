@@ -26,7 +26,7 @@ data_final = datetime.date(2024, 11, 12)
 
 
 chrome_options = webdriver.ChromeOptions()
-# chrome_options.add_argument('--headless')
+chrome_options.add_argument('--headless')
 
 # LIsta de pastas que serão abertas para coleta de dados
 # Nível 1
@@ -74,6 +74,7 @@ def select_pasta_nivel_2(
 selecao_pasta_nivel_2 = select_pasta_nivel_2()
 
 # Separar atos das instituições
+
 tipo_ato = ['Portarias', 'Outros', 'Resoluções']
 tipo_adm_direta = [
     'Diretoria',
@@ -439,18 +440,6 @@ def raspar_diario_oficial(data: str) -> dict:
     #########################################################
     # Lista nivel 3 das pastas
     print('Abrindo pastas nivel 5') # --> Diretoria
-    # Lista de nomes com o nivel de autarquias
-    # lista_pasta_nivel_5 = [
-    #     i.text
-    #     for i in listar_elmento(navegador, By.CLASS_NAME, 'folder')
-    #     if i.text not in lista_pasta_nivel_1
-    #     and i.text not in lista_pasta_nivel_2
-    #     and i.text not in tipo_adm_direta
-    #     and i.text not in tipo_adm_indireta
-    #     and i.text not in tipo_ato
-    #     # Todas as pasta nivel 3 tem padrão camel case (ex. Portaria)
-    #     and i.text[1].islower()
-    # ]
 
     # Construindo o dicionario da árvore de todas as pastas nivel 5
     dict_pasta_nivel_5 = dict_pasta_nivel_4.copy()
@@ -458,7 +447,7 @@ def raspar_diario_oficial(data: str) -> dict:
     count_nivel_2 = 0
     count_nivel_3 = 0
     count_nivel_4 = 0
-    # ABRINDO A PASTA DO NIVEL
+    # ABRINDO A PASTA DO NIVEL 5
     for i in listar_elmento(navegador, By.CLASS_NAME, 'folder'):
         #  NIVEL 1 (Poder)
         if i.text in selecao_pasta_nivel_1:
@@ -498,7 +487,57 @@ def raspar_diario_oficial(data: str) -> dict:
             # Se houver mais do que um tipo de adm indireta o codigo abaixo adicinará as seguintes
             if bool(select_dict):  # Se False dict tem dados
                 select_dict.update({i.text: {}})
-        
+
+
+    dict_pasta_nivel_5 = dict_pasta_nivel_4.copy()
+    count_nivel_1 = 0
+    count_nivel_2 = 0
+    count_nivel_3 = 0
+    count_nivel_4 = 0
+    # Coletando os dados NIVEL 5
+    print('Coletando dados no NIVEL 5')
+    for i in listar_elmento(navegador, By.CLASS_NAME, 'folder'):
+        #  NIVEL 1 (Poder)
+        if i.text in selecao_pasta_nivel_1:
+            # Adicionando o primeiro nivel no dict
+            index_nivel_1 = selecao_pasta_nivel_1.index(i.text)
+            count_nivel_1 += 1
+            count_nivel_2 = 0
+            count_nivel_3 = 0
+            count_nivel_4 = 0
+        #  NIVEL 2 (Secretaria)
+        if i.text in lista_pasta_nivel_2:
+            index_nivel_2 = lista_pasta_nivel_2.index(i.text)
+            count_nivel_2 += 1
+        #  NIVEL 3 (Instituto Meio Ambiente)
+        if i.text in lista_pasta_nivel_3:
+            index_nivel_3 = lista_pasta_nivel_3.index(i.text)
+            count_nivel_3 += 1
+        # NIVEL 4 (Diretoria Geral, Diretoria, divisao_adm_indireta)
+        if i.text in tipo_adm_indireta and count_nivel_3 > len(lista_pasta_nivel_3):
+            # Verificando para saber em qual local da pasta o codigo esta
+            index_nivel_4 = tipo_adm_indireta.index(i.text)
+            count_nivel_4 += 1
+
+        if i.text in tipo_adm_indireta and count_nivel_4 != 0:
+            if i.text in lista_pasta_nivel_3:
+                count_nivel_3 -= 1
+        if (
+            u.check_word_or_list_exist_in_list(i.text, tipo_ato) and count_nivel_4 != 0
+        ):  # Se verdadeiro é uma pasta de atos
+            print(i.text)
+
+            select_dict = dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
+                    lista_pasta_nivel_2[index_nivel_2]][lista_pasta_nivel_3[count_nivel_3 - 1]][
+                        tipo_adm_indireta[index_nivel_4]]
+
+            if not select_dict:  # Se true o dict vazio
+                # Adicionar
+                dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
+                    lista_pasta_nivel_2[index_nivel_2]][lista_pasta_nivel_3[count_nivel_3 - 1]][
+                        tipo_adm_indireta[index_nivel_4]] = {
+                            i.text: coletar_lista_link_ato(navegador, i)}
+
     return {
         'doe_json': dict_pasta_nivel_5,
         'nro_edicao': edicao,
