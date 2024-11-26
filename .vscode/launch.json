@@ -10,6 +10,13 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Main",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "diario_oficial/main.py",
+            "console": "integratedTerminal"
         }
     ]
 }
