@@ -17,6 +17,14 @@
             "request": "launch",
             "program": "diario_oficial/main.py",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Cli",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "diario_oficial/cli.py",
+            "console": "integratedTerminal",
+            "args": ["transformar-doe-bruto-publicacao", "12-11-2024"]           
         }
     ]
 }
