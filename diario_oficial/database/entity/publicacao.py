@@ -37,6 +37,9 @@ class Publicacao(Base):
     divisao_adm_direta_id: Mapped[int] = mapped_column(
         ForeignKey('dominio.divisao_adm_direta.id'), nullable=True
     )
+    divisao_adm_indireta_id: Mapped[int] = mapped_column(
+        ForeignKey('dominio.divisao_adm_indireta.id'), nullable=True
+    )
     tipo_publicacao_id: Mapped[int] = mapped_column(
         ForeignKey('dominio.tipo_publicacao.id'), nullable=True
     )
@@ -53,6 +56,7 @@ class Publicacao(Base):
     adm_direta = relationship('AdministracaoDireta', back_populates='publicacao')
     adm_indireta = relationship('AdministracaoIndireta', back_populates='publicacao')
     divisao_adm_direta = relationship('DivisaoAdministracaoDireta', back_populates='publicacao')
+    divisao_adm_indireta = relationship('DivisaoAdministracaoIndireta', back_populates='publicacao')
     tipo_publicacao = relationship('TipoPublicacao', back_populates='publicacao')
 
     doe_bruto = relationship('DiarioOficialBruto', backref='processing.publicacao')
