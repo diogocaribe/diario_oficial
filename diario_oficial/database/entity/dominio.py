@@ -90,7 +90,7 @@ class DivisaoAdministracaoInireta(Base):
         Base (_type_): _description_
     """
 
-    __tablename__ = 'divisao_adm_indireta'=´ç;
+    __tablename__ = 'divisao_adm_indireta'
     __table_args__ = {'schema': 'dominio'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
