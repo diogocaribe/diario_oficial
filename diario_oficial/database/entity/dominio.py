@@ -81,8 +81,8 @@ class DivisaoAdministracaoDireta(Base):
         'Publicacao', back_populates='divisao_adm_direta', cascade='all, delete-orphan'
     )
 
-class DivisaoAdministracaoInireta(Base):
-    """Tabela para registro do dominio da adm indireta (Orgãos, Institutos)
+class DivisaoAdministracaoIndireta(Base):
+    """Tabela para registro do dominio das divisões da adm indireta (Diretoria, Diretoria Geral)
         Ex.
         nome : Diretoria
         sigla : DG
