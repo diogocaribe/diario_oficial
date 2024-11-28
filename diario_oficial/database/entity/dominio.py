@@ -81,6 +81,25 @@ class DivisaoAdministracaoDireta(Base):
         'Publicacao', back_populates='divisao_adm_direta', cascade='all, delete-orphan'
     )
 
+class DivisaoAdministracaoInireta(Base):
+    """Tabela para registro do dominio da adm indireta (Orgãos, Institutos)
+        Ex.
+        nome : Diretoria
+        sigla : DG
+    Args:
+        Base (_type_): _description_
+    """
+
+    __tablename__ = 'divisao_adm_indireta'=´ç;
+    __table_args__ = {'schema': 'dominio'}
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
+    nome: Mapped[str] = mapped_column(nullable=True, unique=True)
+    sigla: Mapped[str] = mapped_column(nullable=True)
+
+    publicacao = relationship(
+        'Publicacao', back_populates='divisao_adm_indireta', cascade='all, delete-orphan'
+    )
 
 class TipoPublicacao(Base):
     __tablename__ = 'tipo_publicacao'
