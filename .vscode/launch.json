@@ -19,12 +19,20 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Cli",
+            "name": "CliTransformacaoNivel5",
             "type": "debugpy",
             "request": "launch",
             "program": "diario_oficial/cli.py",
             "console": "integratedTerminal",
-            "args": ["transformar-doe-bruto-publicacao", "12-11-2024"]           
+            "args": ["transformar-doe-bruto-publicacao", "2024-11-12"]           
+        },
+        {
+            "name": "CliTransformacaoNivel4",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "diario_oficial/cli.py",
+            "console": "integratedTerminal",
+            "args": ["transformar-doe-bruto-publicacao", "2024-01-11"]           
         }
     ]
 }
