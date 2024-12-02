@@ -24,7 +24,7 @@
             "request": "launch",
             "program": "diario_oficial/cli.py",
             "console": "integratedTerminal",
-            "args": ["transformar-doe-bruto-publicacao", "2024-11-12"]           
+            "args": ["transformar-doe-bruto-publicacao", "12-11-2024"]           
         },
         {
             "name": "CliTransformacaoNivel4",
@@ -32,7 +32,7 @@
             "request": "launch",
             "program": "diario_oficial/cli.py",
             "console": "integratedTerminal",
-            "args": ["transformar-doe-bruto-publicacao", "2024-01-11"]           
+            "args": ["transformar-doe-bruto-publicacao", "11-01-2024"]           
         }
     ]
 }
