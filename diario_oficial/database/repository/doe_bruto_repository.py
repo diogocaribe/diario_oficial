@@ -242,7 +242,7 @@ class DiarioOficialBrutoRepository:
                     # Converter os resultados para uma lista de dicionários
                     result = [dict(zip(columns, row)) for row in result.fetchall()]
                 except Exception as e:
-                    print('Extraindo nivel 5')
+                    print('Transformando nivel 5 para publicação')
                     sql = f"""
                     WITH poder AS (
                     -- Extrai as chaves do primeiro nível (por exemplo, "EXECUTIVO")
