@@ -2,12 +2,30 @@ from database.configs.connection import DBConnectionHandler
 from database.entity.doe_bruto import DiarioOficialBruto
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
+from datetime import datetime, date
 from psycopg import errors
 
 
 from datetime import datetime
 
 from sqlalchemy import text
+
+
+# Função para calcular profundidade
+def calcular_profundidade_dict(d, nivel=0):
+    """_summary_
+
+    Args:
+        d (_type_): _description_
+        nivel (int, optional): _description_. Defaults to 0.
+
+    Returns:
+        _type_: _description_
+    """
+    if not isinstance(d, dict) or not d:
+        return nivel
+    return max(calcular_profundidade_dict(v, nivel + 1) for v in d.values())
 
 
 class DiarioOficialBrutoRepository:
@@ -55,6 +73,20 @@ class DiarioOficialBrutoRepository:
                 db.session.rollback()
                 raise exception
 
+    def get_json_data(self, data: str):
+        with DBConnectionHandler() as db:
+            try:
+                data = datetime.strptime(data, '%Y-%m-%d').date()
+                query = select(DiarioOficialBruto.doe_json).where(DiarioOficialBruto.dt_edicao == data)
+                resultados = db.session.execute(query).scalars().all()
+                return resultados[0]
+            except IndexError:
+                print('Data não encontrada')
+            except Exception as exception:
+                db.session.rollback()
+                raise exception
+
+
     def explodir_doe_bruto_json(self, data: datetime.date):
         """Verificar se o diario oficial daquela data foi coletado
 
@@ -66,183 +98,158 @@ class DiarioOficialBrutoRepository:
         """
         with DBConnectionHandler() as db:
             try:
-                sql = f"""
-               WITH poder AS (
-                -- Extrai as chaves do primeiro nível (por exemplo, "EXECUTIVO")
-                SELECT
-                    id AS doe_bruto_id,
-                    jsonb_object_keys(doe_json) AS poder,
-                    doe_json -> jsonb_object_keys(doe_json) AS _json
-                FROM processing.doe_bruto
-                WHERE dt_edicao = '{data}'
-                ),
-                adm_direta AS (
-                    -- Extrai as chaves do segundo nível a partir do resultado da CTE anterior
+                nivel_data = calcular_profundidade_dict(self.get_json_data(data=data))
+                if nivel_data == 4:
+                    print('Nivel 4')
+                    sql = f"""
+                    WITH poder AS (
+                    -- Extrai as chaves do primeiro nível (por exemplo, "EXECUTIVO")
                     SELECT
-                        doe_bruto_id,
-                        poder,
-                        jsonb_object_keys(_json) AS adm_direta,
-                        _json -> jsonb_object_keys(_json) AS _json
-                    FROM poder
-                ),
-                divisao_adm_direta_ AS (
-                    -- Extrai as chaves do segundo nível a partir do resultado da CTE anterior
-                    SELECT
-                        doe_bruto_id,
-                        poder,
-                        adm_direta,
-                        jsonb_object_keys(_json) AS divisao_adm_direta,
-                        _json -> jsonb_object_keys(_json) AS _json
-                    FROM adm_direta
-                ),
-                tratando_divisao_adm_direta AS (
-                    SELECT
-                        doe_bruto_id,
-                        poder,
-                        adm_direta,
-                        CASE
-                            WHEN divisao_adm_direta IN (SELECT dad.nome FROM dominio.divisao_adm_direta dad) THEN divisao_adm_direta
-                        END AS divisao_adm_direta,
-                        CASE
-                            WHEN divisao_adm_direta IN (SELECT ai.nome FROM dominio.adm_indireta ai) THEN divisao_adm_direta
-                        END AS adm_indireta,
-                        CASE
-                            WHEN divisao_adm_direta IN (SELECT tp.nome FROM dominio.tipo_publicacao tp) THEN divisao_adm_direta
-                        END AS tipo_publicacao,
-                        CASE 
-                            WHEN 
-                                jsonb_typeof(_json) = 'object' THEN _json
-                        END AS _json,
-                        CASE 
-                            WHEN 
-                                jsonb_typeof(_json) = 'array' THEN _json
-                        END AS conteudo
-                    FROM divisao_adm_direta_
-                ),
-                tratanto_divisao_adm_indireta AS (
-                    SELECT 
-                        doe_bruto_id,
-                        poder,
-                        adm_direta,
-                        divisao_adm_direta,
-                        adm_indireta,
-                        CASE 
-                            WHEN divisao_adm_indireta IN (SELECT dai.nome FROM dominio.divisao_adm_indireta dai) THEN divisao_adm_indireta
-                        END AS divisao_adm_indireta,
-                        _json
-                    FROM (	
+                        id AS doe_bruto_id,
+                        jsonb_object_keys(doe_json) AS poder,
+                        doe_json -> jsonb_object_keys(doe_json) AS _json
+                    FROM processing.doe_bruto
+                    WHERE dt_edicao = '{data}'
+                    ),
+                    adm_direta AS (
+                        -- Extrai as chaves do segundo nível a partir do resultado da CTE anterior
+                        SELECT
+                            doe_bruto_id,
+                            poder,
+                            jsonb_object_keys(_json) AS adm_direta,
+                            _json -> jsonb_object_keys(_json) AS _json
+                        FROM poder
+                    ),
+                    divisao_adm_direta_ AS (
+                        -- Extrai as chaves do segundo nível a partir do resultado da CTE anterior
+                        SELECT
+                            doe_bruto_id,
+                            poder,
+                            adm_direta,
+                            jsonb_object_keys(_json) AS divisao_adm_direta,
+                            _json -> jsonb_object_keys(_json) AS _json
+                        FROM adm_direta
+                    ),
+                    tratando_divisao_adm_direta AS (
+                        SELECT
+                            doe_bruto_id,
+                            poder,
+                            adm_direta,
+                            CASE
+                                WHEN divisao_adm_direta IN (SELECT dad.nome FROM dominio.divisao_adm_direta dad) THEN divisao_adm_direta
+                            END AS divisao_adm_direta,
+                            CASE
+                                WHEN divisao_adm_direta IN (SELECT ai.nome FROM dominio.adm_indireta ai) THEN divisao_adm_direta
+                            END AS adm_indireta,
+                            CASE
+                                WHEN divisao_adm_direta IN (SELECT tp.nome FROM dominio.tipo_publicacao tp) THEN divisao_adm_direta
+                            END AS tipo_publicacao,
+                            CASE 
+                                WHEN 
+                                    jsonb_typeof(_json) = 'object' THEN _json
+                            END AS _json,
+                            CASE 
+                                WHEN 
+                                    jsonb_typeof(_json) = 'array' THEN _json
+                            END AS conteudo
+                        FROM divisao_adm_direta_
+                    ),
+                    tratanto_divisao_adm_indireta AS (
+                        SELECT 
+                            doe_bruto_id,
+                            poder,
+                            adm_direta,
+                            divisao_adm_direta,
+                            adm_indireta,
+                            CASE 
+                                WHEN divisao_adm_indireta IN (SELECT dai.nome FROM dominio.divisao_adm_indireta dai) THEN divisao_adm_indireta
+                            END AS divisao_adm_indireta,
+                            _json
+                        FROM (	
+                            SELECT
+                                doe_bruto_id,
+                                poder,
+                                adm_direta,
+                                divisao_adm_direta,
+                                adm_indireta,
+                                jsonb_object_keys(_json) AS divisao_adm_indireta,
+                                _json -> jsonb_object_keys(_json) AS _json     
+                            FROM tratando_divisao_adm_direta
+                        ) t
+                        WHERE divisao_adm_indireta IN (SELECT nome FROM dominio.divisao_adm_indireta dai)
+                    ),
+                    tratanto_divisao_adm_indireta_ AS (
                         SELECT
                             doe_bruto_id,
                             poder,
                             adm_direta,
                             divisao_adm_direta,
                             adm_indireta,
-                            jsonb_object_keys(_json) AS divisao_adm_indireta,
-                            _json -> jsonb_object_keys(_json) AS _json     
-                        FROM tratando_divisao_adm_direta
-                    ) t
-                    WHERE divisao_adm_indireta IN (SELECT nome FROM dominio.divisao_adm_indireta dai)
-                ),
-                tratanto_divisao_adm_indireta_ AS (
+                            divisao_adm_indireta,
+                            jsonb_object_keys(_json) AS tipo_publicacao,
+                            _json -> jsonb_object_keys(_json) AS _json 
+                        FROM tratanto_divisao_adm_indireta
+                    )
+                    --Administracao Direta
                     SELECT
-                        doe_bruto_id,
-                        poder,
-                        adm_direta,
-                        divisao_adm_direta,
-                        adm_indireta,
-                        divisao_adm_indireta,
-                        jsonb_object_keys(_json) AS tipo_publicacao,
-                        _json -> jsonb_object_keys(_json) AS _json 
-                    FROM tratanto_divisao_adm_indireta
-                )
-                --Administracao Direta
-                SELECT
-                    doe_bruto_id,
-                    p.id AS poder_id,
-                    ad.id AS adm_direta_id,
-                    dad.id AS divisao_adm_direta_id,
-                    ai.id AS adm_indireta_id,
-                    NULL AS divisao_adm_indireta_id,
-                    tp.id AS tipo_publicacao_id,
-                    jsonb_array_elements_text(conteudo)::jsonb->>'nome' AS nome_ato,
-                    jsonb_array_elements_text(conteudo)::jsonb->>'identificador' AS identificador_link,
-                    jsonb_array_elements_text(conteudo)::jsonb->>'link' AS link
-                FROM tratando_divisao_adm_direta
-                LEFT JOIN dominio.poder p ON p.nome = poder
-                LEFT JOIN dominio.adm_direta ad ON ad.nome = adm_direta
-                LEFT JOIN dominio.divisao_adm_direta dad ON dad.nome = divisao_adm_direta
-                LEFT JOIN dominio.adm_indireta ai ON ai.nome = adm_indireta
-                LEFT JOIN dominio.tipo_publicacao tp ON tp.nome = tipo_publicacao
-                UNION
-                """
-
-                nivel_4 = """
-                -- Administracao Indireta com 4 niveis
-                SELECT 
-                    doe_bruto_id,
-                    poder_id,
-                    adm_direta_id,
-                    divisao_adm_direta_id,
-                    adm_indireta_id,
-                    divisao_adm_indireta_id,
-                    tp2.id AS tipo_publicacao_id,
-                    t.nome AS nome_ato, 
-                    identificador AS identificador_link, 
-                    link
-                FROM (
-                    SELECT 
                         doe_bruto_id,
                         p.id AS poder_id,
                         ad.id AS adm_direta_id,
                         dad.id AS divisao_adm_direta_id,
                         ai.id AS adm_indireta_id,
-                        NULL::NUMERIC AS divisao_adm_indireta,
-                        jsonb_object_keys(_json) AS tipo_publicacao,
-                        jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'nome' AS nome,
-                        jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'identificador' AS identificador,
-                        jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'link' AS link
+                        NULL AS divisao_adm_indireta_id,
+                        tp.id AS tipo_publicacao_id,
+                        jsonb_array_elements_text(conteudo)::jsonb->>'nome' AS nome_ato,
+                        jsonb_array_elements_text(conteudo)::jsonb->>'identificador' AS identificador_link,
+                        jsonb_array_elements_text(conteudo)::jsonb->>'link' AS link
                     FROM tratando_divisao_adm_direta
                     LEFT JOIN dominio.poder p ON p.nome = poder
                     LEFT JOIN dominio.adm_direta ad ON ad.nome = adm_direta
                     LEFT JOIN dominio.divisao_adm_direta dad ON dad.nome = divisao_adm_direta
                     LEFT JOIN dominio.adm_indireta ai ON ai.nome = adm_indireta
                     LEFT JOIN dominio.tipo_publicacao tp ON tp.nome = tipo_publicacao
-                    WHERE jsonb_typeof(_json) = 'object'
-                ) t
-                LEFT JOIN dominio.tipo_publicacao tp2 ON tp2.nome = t.tipo_publicacao
-                """
-                nivel_5 = """
-                -- Administracao Indireta com 4 niveis
-                -- Administracao Indireta com 5 niveis
-                SELECT
-                    doe_bruto_id,
-                    p.id  AS poder_id,
-                    ad.id AS adm_direta_id,
-                    dad.id AS divisao_adm_direta_id,
-                    ai.id AS adm_indireta_id,
-                    dai.id AS divisao_adm_indireta,
-                    tp.id AS tipo_publicacao_id,
-                    jsonb_array_elements_text(_json)::jsonb->>'nome' AS nome_ato,
-                    jsonb_array_elements_text(_json)::jsonb->>'identificador' AS identificador_link,
-                    jsonb_array_elements_text(_json)::jsonb->>'link' AS link
-                FROM tratanto_divisao_adm_indireta_
-                LEFT JOIN dominio.poder p ON p.nome = poder
-                LEFT JOIN dominio.adm_direta ad ON ad.nome = adm_direta
-                LEFT JOIN dominio.divisao_adm_direta dad ON dad.nome = divisao_adm_direta
-                LEFT JOIN dominio.adm_indireta ai ON ai.nome = adm_indireta
-                LEFT JOIN dominio.divisao_adm_indireta dai ON dai.nome = divisao_adm_indireta
-                LEFT JOIN dominio.tipo_publicacao tp ON tp.nome = tipo_publicacao
-                """
-
-                sql = sql + nivel_4
-
-                try:
+                    UNION
+                    -- Administracao Indireta com 4 niveis
+                    SELECT 
+                        doe_bruto_id,
+                        poder_id,
+                        adm_direta_id,
+                        divisao_adm_direta_id,
+                        adm_indireta_id,
+                        divisao_adm_indireta AS divisao_adm_indireta_id,
+                        tp2.id AS tipo_publicacao_id,
+                        t.nome AS nome_ato, 
+                        identificador AS identificador_link, 
+                        link
+                    FROM (
+                        SELECT 
+                            doe_bruto_id,
+                            p.id AS poder_id,
+                            ad.id AS adm_direta_id,
+                            dad.id AS divisao_adm_direta_id,
+                            ai.id AS adm_indireta_id,
+                            NULL::NUMERIC AS divisao_adm_indireta,
+                            jsonb_object_keys(_json) AS tipo_publicacao,
+                            jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'nome' AS nome,
+                            jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'identificador' AS identificador,
+                            jsonb_array_elements_text(_json -> jsonb_object_keys(_json))::jsonb->>'link' AS link
+                        FROM tratando_divisao_adm_direta
+                        LEFT JOIN dominio.poder p ON p.nome = poder
+                        LEFT JOIN dominio.adm_direta ad ON ad.nome = adm_direta
+                        LEFT JOIN dominio.divisao_adm_direta dad ON dad.nome = divisao_adm_direta
+                        LEFT JOIN dominio.adm_indireta ai ON ai.nome = adm_indireta
+                        LEFT JOIN dominio.tipo_publicacao tp ON tp.nome = tipo_publicacao
+                        WHERE jsonb_typeof(_json) = 'object'
+                    ) t
+                    LEFT JOIN dominio.tipo_publicacao tp2 ON tp2.nome = t.tipo_publicacao;
+                    """
                     result = db.get_engine().connect().execute(text(sql))
                     columns = result.keys()
                     # Converter os resultados para uma lista de dicionários
                     result = [dict(zip(columns, row)) for row in result.fetchall()]
-                except Exception as e:
-                    print('Transformando nivel 5 para publicação')
+
+                if nivel_data == 5:
+                    print('Nivel 5')
                     sql = f"""
                     WITH poder AS (
                     -- Extrai as chaves do primeiro nível (por exemplo, "EXECUTIVO")
@@ -376,6 +383,8 @@ class DiarioOficialBrutoRepository:
                     # Converter os resultados para uma lista de dicionários
                     result = [dict(zip(columns, row)) for row in result.fetchall()]
                 return result
+            except UnboundLocalError:
+                print('Não existe registro no banco para esta data.')
             except Exception as exception:
                 raise exception
 

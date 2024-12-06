@@ -6,9 +6,10 @@ from diario_oficial.database.entity.dominio import (
     Poder,
     TipoPublicacao,
     AdministracaoIndireta,
+    DivisaoAdministracaoIndireta
 )
 from diario_oficial.database.entity.doe_bruto import DiarioOficialBruto
-# from diario_oficial.database.entity.ato import Ato
+from diario_oficial.database.entity.ato import Ato
 
 
 from ..configs.base import Base
@@ -28,7 +29,7 @@ class Publicacao(Base):
     __table_args__ = {'schema': 'processing'}
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
-    doe_bruto_id: Mapped[int] = mapped_column(ForeignKey('processing.doe_bruto.id'), nullable=False)
+    doe_bruto_id: Mapped[int] = mapped_column(ForeignKey('processing.doe_bruto.id', ondelete='CASCADE'), nullable=False)
     poder_id: Mapped[int] = mapped_column(ForeignKey('dominio.poder.id'), nullable=False)
     adm_direta_id: Mapped[int] = mapped_column(ForeignKey('dominio.adm_direta.id'), nullable=True)
     adm_indireta_id: Mapped[int] = mapped_column(
@@ -58,6 +59,8 @@ class Publicacao(Base):
     divisao_adm_direta = relationship('DivisaoAdministracaoDireta', back_populates='publicacao')
     divisao_adm_indireta = relationship('DivisaoAdministracaoIndireta', back_populates='publicacao')
     tipo_publicacao = relationship('TipoPublicacao', back_populates='publicacao')
+
+    publicacao = relationship('Ato', backref='processing.publicacao')
 
     doe_bruto = relationship('DiarioOficialBruto', backref='processing.publicacao')
 
