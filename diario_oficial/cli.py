@@ -41,7 +41,7 @@ def raspar_doe_bruto(data: str, save_db: bool = False):
 
 
 @app.command()
-def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = True, save_db: bool = False):
+def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = True, save_db: bool = True):
     """
     Esta função pega todos os dados brutos não processados e 
     transforma em publicação (tabela publicacao do banco de dados).
@@ -53,7 +53,7 @@ def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = T
     """
     print('Transformando dados brutos em publicações.')
     if transformar_publicacao:
-        # coleta_doe_data(data=data)
+        data = f"{data[-4:]}-{data[3:5]}-{data[:2]}"
         dados = doe_bruto.explodir_doe_bruto_json(data=data)
         print(dados)
         if save_db:

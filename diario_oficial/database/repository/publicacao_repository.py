@@ -25,7 +25,7 @@ class PublicacaoRepository:
                 db.session.add_all(publicacoes)
                 # Commit a transação
                 db.session.commit()
-                print('Transformação dos dados brutos em publicação salva com sucesso.')
+                print('Transformação salva com sucesso.')
             except IntegrityError as e:
                 # Verifica se a causa foi uma violação de unicidade
                 if isinstance(e.orig, errors.UniqueViolation):
