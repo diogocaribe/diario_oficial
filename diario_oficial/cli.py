@@ -2,9 +2,11 @@ import typer
 from datetime import datetime
 from rich.pretty import Pretty
 from rich import print
-from raspar_doe import raspar_diario_oficial, doe_bruto, coleta_doe_data
+from raspar_doe import raspar_diario_oficial, doe_bruto
 from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
-from dados import publicacao
+from dados import publicacao, ato
+
+from transformacao import separar_ato, get_conteudo_texto_link
 
 from contextlib import redirect_stdout
 from io import StringIO
@@ -59,6 +61,22 @@ def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = T
         if save_db:
             # Salvando dados do do doe bruto em publicacao
             publicacao.save_data(dados)
+            # Selecionar o id a partir da data da edicao (dt_edicao)
+            id_doe_bruto = doe_bruto.check_if_date_doe_coleted(
+                data=datetime.strptime(data, '%Y-%m-%d')).id
+            doe_bruto.update_doe_bruto_para_publicacao(id_doe=id_doe_bruto)
+
+    try:
+        lista_publicacao = publicacao.get_all()
+
+        # Coletando o conteudo textual de cada link
+        for publicacao_ in lista_publicacao:
+            # Coletando o conteudo texual do link
+            texto = get_conteudo_texto_link(publicacao_.link)
+            # Gravando o conteudo textual no banco
+            publicacao.update_conteudo_link(id_publicacao=publicacao_.id, conteudo_link=texto)
+    except TypeError:
+        print('Não existe links de publicações para coletar conteudo textual.')
 
 
 if __name__ == '__main__':
