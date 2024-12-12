@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from ..configs.base import Base
+from diario_oficial.database.configs.base import Base
 
 
 class Poder(Base):

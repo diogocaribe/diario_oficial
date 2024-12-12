@@ -67,7 +67,7 @@ def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = T
             doe_bruto.update_doe_bruto_para_publicacao(id_doe=id_doe_bruto)
 
     try:
-        lista_publicacao = publicacao.get_all()
+        lista_publicacao = publicacao.get_all_conteudo_link_none()
 
         # Coletando o conteudo textual de cada link
         for publicacao_ in lista_publicacao:
@@ -77,6 +77,41 @@ def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = T
             publicacao.update_conteudo_link(id_publicacao=publicacao_.id, conteudo_link=texto)
     except TypeError:
         print('Não existe links de publicações para coletar conteudo textual.')
+
+
+@app.command()
+@staticmethod
+def transformar_publicacao_ato():
+    """
+    Esta função todas as publicações e transforma em atos.
+    """
+    print('Transformando publicacao em atos.')
+    lista_publicacao = publicacao.get_conteudo_link_processada_ato_null()
+
+    # Coletando o conteudo textual de cada link
+    for publicacao_ in lista_publicacao:
+        # Coletando o conteudo texual do link
+        texto = publicacao_.conteudo_link
+
+        try:
+            # Separar cada publicação em atos
+            atos = separar_ato(texto)
+            if atos:
+                for ato_ in atos:
+                    if ato_ != '':
+                        print(f"\n{publicacao_.id}\n{'='*80}\n{ato_}\n")
+                        objeto_ato = {'publicacao_id': publicacao_.id, 'conteudo_ato': ato_}
+                        ato.save_data(objeto_ato)
+            else:
+                print(f"""
+                        Não foi extraido nenhum ato da publicação. 
+                        O regex não pegou nenhum padrão na publicacao de id: {publicacao_.id}""")
+                raise Exception
+        except Exception:
+            print('Erro ao salvar atos')
+        else:
+            print(f'Salvando ato da publicacao: {publicacao_.id}')
+            publicacao.update_processada_para_ato(id_publicacao=publicacao_.id)
 
 
 if __name__ == '__main__':

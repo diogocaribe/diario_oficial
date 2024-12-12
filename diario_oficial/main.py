@@ -44,7 +44,7 @@ def pipeline(data: datetime):
         # Atualizar doe_bruto_para_pucalicaçao
         doe_bruto.update_doe_bruto_para_publicacao(id_doe=id_doe_bruto)
 
-        lista_publicacao = publicacao.get_all()
+        lista_publicacao = publicacao.get_all_conteudo_link_none()
 
         # Coletando o conteudo textual de cada link
         for publicacao_ in lista_publicacao:

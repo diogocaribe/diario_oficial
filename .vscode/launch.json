@@ -19,7 +19,7 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "CliTransformacaoNivel5",
+            "name": "CliTransformacao5",
             "type": "debugpy",
             "request": "launch",
             "program": "diario_oficial/cli.py",
@@ -27,12 +27,20 @@
             "args": ["transformar-doe-bruto-publicacao", "12-11-2024"]           
         },
         {
-            "name": "CliTransformacaoNivel4",
+            "name": "CliTransformacao4",
             "type": "debugpy",
             "request": "launch",
             "program": "diario_oficial/cli.py",
             "console": "integratedTerminal",
             "args": ["transformar-doe-bruto-publicacao", "11-01-2024"]           
+        },
+        {
+            "name": "TranformacaoPublicacaoAto",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "diario_oficial/cli.py",
+            "console": "integratedTerminal",
+            "args": ["transformar-publicacao-ato"]           
         }
     ]
 }
