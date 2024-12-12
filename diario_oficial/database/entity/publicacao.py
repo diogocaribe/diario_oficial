@@ -1,6 +1,8 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from diario_oficial.database.entity.dominio import Poder
+from diario_oficial.database.entity.doe_bruto import DiarioOficialBruto
 from diario_oficial.database.configs.base import Base
 
 
