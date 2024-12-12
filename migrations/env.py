@@ -8,9 +8,6 @@ from sqlalchemy_utils import database_exists, create_database
 
 
 from diario_oficial.database.entity.doe_bruto import DiarioOficialBruto
-from diario_oficial.database.entity.publicacao import Publicacao
-from diario_oficial.database.entity.dominio import Poder
-from diario_oficial.database.entity.ato import Ato
 
 # import sys
 # import os

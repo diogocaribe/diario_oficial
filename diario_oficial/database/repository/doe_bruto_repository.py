@@ -3,11 +3,10 @@ from database.entity.doe_bruto import DiarioOficialBruto
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
-from datetime import datetime, date
+from datetime import datetime
 from psycopg import errors
 
 
-from datetime import datetime
 
 from sqlalchemy import text
 
