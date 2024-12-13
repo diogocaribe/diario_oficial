@@ -32,6 +32,9 @@ class DiarioOficialBruto(Base):
     doe_json: Mapped[JSONB] = mapped_column(
         type_=JSONB, nullable=True, comment='Dados extraídos do DOE em formato json.'
     )
+    url: Mapped[str] = mapped_column(
+        nullable=True, comment='Url de acesso ao diário oficial bruto.'
+    )
 
     doe_bruto_para_publicacao: Mapped[bool] = mapped_column(
         nullable=True, comment='Indicação se ocorreu o processamento do doe bruto para publicacao.'

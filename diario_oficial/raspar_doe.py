@@ -239,6 +239,7 @@ def raspar_diario_oficial(data: str) -> dict:
         .find_element(By.TAG_NAME, 'strong')
         .text.split()[-1]
     )
+    url = navegador.current_url
     ######################## NIVEL 1 ########################
     # Listar pastas no nivel 1 do sumário
     lista_pasta_nivel_1 = [i.text for i in listar_elmento(navegador, By.CLASS_NAME, 'folder')]
@@ -543,6 +544,7 @@ def raspar_diario_oficial(data: str) -> dict:
         'nro_edicao': edicao,
         'dt_edicao': data,
         'existe': True,
+        'url': url
     }
 
 
