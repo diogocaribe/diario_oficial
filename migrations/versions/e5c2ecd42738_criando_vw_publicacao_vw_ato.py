@@ -43,26 +43,26 @@ def upgrade() -> None:
 
     op.execute(sa.text('''
         -- View para atos
-        CREATE VIEW vw_ato AS
         SELECT
             a.id,
-            db.nro_edicao, db.dt_edicao, p2.nome AS poder,
+            db.nro_edicao, db.dt_edicao,
+            p2.nome AS poder,
             ad.nome AS adm_direta,
             dad.nome AS divisao_adm_direta,
             ai.nome AS adm_indireta,
             dai.nome AS divisao_adm_indireta,
-            tp.nome AS tipo_publicacao, 
-            p.nome_ato, p.identificador_link, p.link, p.conteudo_link,
+            tp.nome AS tipo_publicacao,
+            p.nome_ato, p.identificador_link AS identificador_publicacao, p.link AS link_publicacao, p.conteudo_link AS conteudo_publicacao, 
             a.conteudo_ato AS ato
-        FROM processing.doe_bruto db 
-        JOIN processing.publicacao p ON p.doe_bruto_id = db.id 
-        LEFT JOIN dominio.poder p2 ON p.poder_id = p2.id 
+        FROM processing.ato a
+        LEFT JOIN processing.publicacao p ON a.publicacao_id = p.id
+        LEFT JOIN processing.doe_bruto db ON p.doe_bruto_id = db.id 
+        LEFT JOIN dominio.poder p2 ON p.poder_id = p2.id
         LEFT JOIN dominio.adm_direta ad ON p.adm_direta_id = ad.id
         LEFT JOIN dominio.adm_indireta ai ON p.adm_indireta_id = ai.id
         LEFT JOIN dominio.divisao_adm_direta dad ON p.divisao_adm_direta_id = dad.id
         LEFT JOIN dominio.divisao_adm_indireta dai ON p.divisao_adm_indireta_id = dai.id
-        LEFT JOIN dominio.tipo_publicacao tp ON p.tipo_publicacao_id = tp.id
-        LEFT JOIN processing.ato a ON a.publicacao_id = p.id;
+        LEFT JOIN dominio.tipo_publicacao tp ON p.tipo_publicacao_id = tp.id;
     '''))
     # ### end Alembic commands ###
 
