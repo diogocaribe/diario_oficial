@@ -1,0 +1,32 @@
+services:
+  app:
+    image: diario_oficial
+    container_name: diario_oficial
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/diario_oficial
+    networks:
+      - inema
+    
+  
+  selenium:
+    image: selenium/standalone-chrome:134.0-20250303
+    container_name: selenium
+    shm_size: 4gb
+    restart: always
+    ports:
+      - "4444:4444"
+    environment:
+      SE_NODE_MAX_SESSIONS: 4
+      SE_NODE_SESSION_TIMEOUT: 30
+      SE_NODE_OVERRIDE_MAX_SESSIONS: "true"
+    networks:
+      - inema
+    
+networks:
+  inema:
+    name: inema
+    driver: bridge
+    external: true

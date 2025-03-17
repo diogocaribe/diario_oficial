@@ -23,8 +23,8 @@ def raspar_doe_bruto(data: str, save_db: bool = True):
         save_db (bool, optional): Indicar se salva ou não no banco. Padrão é False.
     
     Examples: \n
-        >>> python diario_oficial/cli.py '12-11-2024' --no-save-db \n
-        >>> python diario_oficial/cli.py '12-11-2024' --save-db
+        >>> python diario_oficial/cli.py raspar-doe-bruto '12-11-2024' --no-save-db \n
+        >>> python diario_oficial/cli.py raspar-doe-bruto '12-11-2024' --save-db
     """
     print(f'Raspando os dados do Diário Oficial Bahia de {data}')
     # with redirect_stdout(StringIO()):

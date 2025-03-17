@@ -178,7 +178,8 @@ def raspar_diario_oficial(data: str) -> dict:
     """
     data_ = data.strftime('%d-%m-%Y')
     print(f'Raspando o Diario oficial de: {data}')
-    navegador = webdriver.Chrome(options=chrome_options)
+    # navegador = webdriver.Chrome(options=chrome_options)
+    navegador = webdriver.Remote("http://192.168.64.4:4444", options=webdriver.ChromeOptions())
 
     # Sintaxe do wait
     wdw = WebDriverWait(
