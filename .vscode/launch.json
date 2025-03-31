@@ -50,6 +50,14 @@
             "program": "diario_oficial/cli.py",
             "console": "integratedTerminal",
             "args": ["transformar-publicacao-ato"]           
-        }
+        },
+        {
+            "name": "RasparDoe1",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "diario_oficial/cli.py",
+            "console": "integratedTerminal",
+            "args": ["raspar-doe-bruto", "11-01-2023", "--no-save-db"]           
+        },
     ]
 }
