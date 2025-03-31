@@ -52,6 +52,10 @@ def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = T
         data (str): Data 'DD-MM-YYYY'
         tranformcar_publicacao (bool, optional): Realiza a transformação dos dados brutos em 
         publicação. Defaults to False.
+
+    Examples:
+        >>> python diario_oficial/cli.py transformar-doe-bruto-publicacao '12-11-2024' --no-transformar-publicacao --no-save-db
+        >>> python diario_oficial/cli.py transformar-doe-bruto-publicacao '12-11-2024' --transformar-publicacao --save-db
     """
     print('Transformando dados brutos em publicações.')
     if transformar_publicacao:
