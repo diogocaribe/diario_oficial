@@ -36,3 +36,9 @@ alembic revision --autogenerate -m "comentario sobre a versão"
 
 alembic upgrade head
 ```
+
+## Criando o banco para iniciar a coleta de dados
+```bash
+poetry shell
+alembic upgrade head
+```
