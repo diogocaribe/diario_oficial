@@ -11,3 +11,7 @@ class Settings(BaseSettings):
     PORT: int
 
     DATABASE_URL: str
+
+    # Selenium address
+    SELENIUM_ADDRESS: str
+    SELENIUM_PORT: int
