@@ -9,7 +9,6 @@ services:
       - .:/diario_oficial
     networks:
       - inema
-    
   
   selenium:
     image: selenium/standalone-chrome:134.0-20250303
@@ -19,9 +18,9 @@ services:
     ports:
       - "4444:4444"
     environment:
-      SE_NODE_MAX_SESSIONS: 1
+      SE_NODE_MAX_SESSIONS: 4
       SE_NODE_SESSION_TIMEOUT: 30
-      SE_NODE_OVERRIDE_MAX_SESSIONS: "true"
+      # SE_NODE_OVERRIDE_MAX_SESSIONS: "true"
     networks:
       - inema
     
