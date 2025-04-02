@@ -18,6 +18,8 @@ import util as u
 from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
 from dados import doe_bruto
 
+from diario_oficial.settings import Settings
+
 # Primeiro data do diário oficial 05/01/2016??
 
 site_link = 'https://dool.egba.ba.gov.br/'
@@ -87,10 +89,9 @@ tipo_adm_direta = [
     'Corpo',
 ]
 
-tipo_adm_indireta = [
-    'Diretoria',
-    'Diretoria Geral'
-]
+tipo_adm_indireta = ['Diretoria', 'Diretoria Geral']
+
+
 # Clicar no botão para continuar sem cadastro
 def esperar_elemento(by, elemento, navegador):
     """Função para realizar a espera do elemento na tela do navegador.
@@ -178,8 +179,10 @@ def raspar_diario_oficial(data: str) -> dict:
     """
     data_ = data.strftime('%d-%m-%Y')
     print(f'Raspando o Diario oficial de: {data}')
+    print(f'{Settings().SELENIUM_ADDRESS}:{Settings().SELENIUM_PORT}')
     # navegador = webdriver.Chrome(options=chrome_options)
-    navegador = webdriver.Remote("http://192.168.64.4:4444", options=webdriver.ChromeOptions())
+    navegador = webdriver.Remote(f'{Settings().SELENIUM_ADDRESS}:{Settings().SELENIUM_PORT}',
+                                 options=webdriver.ChromeOptions())
 
     # Sintaxe do wait
     wdw = WebDriverWait(
@@ -243,7 +246,9 @@ def raspar_diario_oficial(data: str) -> dict:
     url = navegador.current_url
     ######################## NIVEL 1 ########################
     # Listar pastas no nivel 1 do sumário
-    lista_pasta_nivel_1 = [i.text for i in listar_elmento(navegador, By.CLASS_NAME, 'folder')]
+    lista_pasta_nivel_1 = [
+        i.text for i in listar_elmento(navegador, By.CLASS_NAME, 'folder')
+    ]
     nao_selecao_pasta_nivel_1 = set(lista_pasta_nivel_1) - set(selecao_pasta_nivel_1)
 
     abrir_pastas(navegador, pastas=selecao_pasta_nivel_1)
@@ -266,7 +271,9 @@ def raspar_diario_oficial(data: str) -> dict:
         if i.text in selecao_pasta_nivel_1:
             # Adicionando o primeiro nivel no dict
             count_nivel_1 = selecao_pasta_nivel_1.index(i.text)
-            if not dict_pasta_nivel_2:  # testando se o dict esta vazio, se true o dict esta vazio
+            if (
+                not dict_pasta_nivel_2
+            ):  # testando se o dict esta vazio, se true o dict esta vazio
                 dict_pasta_nivel_2.update({selecao_pasta_nivel_1[count_nivel_1]: {}})
                 pass
             if bool(dict_pasta_nivel_2):  # se true o dict tem dados nele
@@ -280,9 +287,13 @@ def raspar_diario_oficial(data: str) -> dict:
             and i.text in select_pasta_nivel_2()
         ):
             if not dict_pasta_nivel_2:  # se true o dict esta vazio
-                dict_pasta_nivel_2 = {selecao_pasta_nivel_1[count_nivel_1]: {i.text: {}}}
+                dict_pasta_nivel_2 = {
+                    selecao_pasta_nivel_1[count_nivel_1]: {i.text: {}}
+                }
             elif bool(dict_pasta_nivel_2):  # se true o dict tem dados nele
-                dict_pasta_nivel_2[selecao_pasta_nivel_1[count_nivel_1]].update({i.text: {}})
+                dict_pasta_nivel_2[selecao_pasta_nivel_1[count_nivel_1]].update(
+                    {i.text: {}}
+                )
 
     print(dict_pasta_nivel_2)
 
@@ -363,7 +374,9 @@ def raspar_diario_oficial(data: str) -> dict:
                     pass
 
     # Clicando nas no nivel 3 (Autarquias, Superintendencias, Diretorias)
-    lista_pasta_clicar = set(lista_pasta_nivel_3) - set(lista_pasta_nivel_3).intersection(tipo_ato)
+    lista_pasta_clicar = set(lista_pasta_nivel_3) - set(
+        lista_pasta_nivel_3
+    ).intersection(tipo_ato)
     abrir_pastas(navegador, set(lista_pasta_clicar))
 
     #########################################################
@@ -441,7 +454,7 @@ def raspar_diario_oficial(data: str) -> dict:
     ############# DIRETORIA,  SUPERINTENDENCIA ##############
     #########################################################
     # Lista nivel 3 das pastas
-    print('Abrindo pastas nivel 5') # --> Diretoria
+    print('Abrindo pastas nivel 5')  # --> Diretoria
 
     # Construindo o dicionario da árvore de todas as pastas nivel 5
     dict_pasta_nivel_5 = dict_pasta_nivel_4.copy()
@@ -480,16 +493,16 @@ def raspar_diario_oficial(data: str) -> dict:
                 count_nivel_3 -= 1
             # Adicionei -1 ao count_nivel_3 dado que a indexação começa no 0
             select_dict = dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
-                lista_pasta_nivel_2[index_nivel_2]][lista_pasta_nivel_3[count_nivel_3 - 1]]
+                lista_pasta_nivel_2[index_nivel_2]
+            ][lista_pasta_nivel_3[count_nivel_3 - 1]]
             if not select_dict:  # Se true o dict vazio
                 dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
-                lista_pasta_nivel_2[index_nivel_2]][
-                    lista_pasta_nivel_3[count_nivel_3 - 1]] = {i.text: {}}
+                    lista_pasta_nivel_2[index_nivel_2]
+                ][lista_pasta_nivel_3[count_nivel_3 - 1]] = {i.text: {}}
 
             # Se houver mais do que um tipo de adm indireta o codigo abaixo adicinará as seguintes
             if bool(select_dict):  # Se False dict tem dados
                 select_dict.update({i.text: {}})
-
 
     dict_pasta_nivel_5 = dict_pasta_nivel_4.copy()
     count_nivel_1 = 0
@@ -530,22 +543,23 @@ def raspar_diario_oficial(data: str) -> dict:
             print(i.text)
 
             select_dict = dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
-                    lista_pasta_nivel_2[index_nivel_2]][lista_pasta_nivel_3[count_nivel_3 - 1]][
-                        tipo_adm_indireta[index_nivel_4]]
+                lista_pasta_nivel_2[index_nivel_2]
+            ][lista_pasta_nivel_3[count_nivel_3 - 1]][tipo_adm_indireta[index_nivel_4]]
 
             if not select_dict:  # Se true o dict vazio
                 # Adicionar
                 dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
-                    lista_pasta_nivel_2[index_nivel_2]][lista_pasta_nivel_3[count_nivel_3 - 1]][
-                        tipo_adm_indireta[index_nivel_4]] = {
-                            i.text: coletar_lista_link_ato(navegador, i)}
+                    lista_pasta_nivel_2[index_nivel_2]
+                ][lista_pasta_nivel_3[count_nivel_3 - 1]][
+                    tipo_adm_indireta[index_nivel_4]
+                ] = {i.text: coletar_lista_link_ato(navegador, i)}
 
     return {
         'doe_json': dict_pasta_nivel_5,
         'nro_edicao': edicao,
         'dt_edicao': data,
         'existe': True,
-        'url': url
+        'url': url,
     }
 
 
