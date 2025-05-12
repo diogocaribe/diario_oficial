@@ -6,26 +6,26 @@ import warnings
 
 def get_conteudo_texto_link(url: str) -> str:
     warnings.filterwarnings('ignore', message='Unverified HTTPS request')
-    
+
     try:
-        response = requests.get(url, verify=False, timeout=10)
+        print(f"Tentando acessar: {url}")
+        response = requests.get(url, verify=False, timeout=(3, 10))
 
         if response.status_code == 200:
-            # Usa o .content (binário) e força decode com fallback seguro
-            html_content = response.content.decode('utf-8', errors='ignore')
-
-            # Remove \x00 (NUL) manualmente, se sobrar algo
-            html_content = html_content.replace('\x00', '')
+            # Decodifica o conteúdo e remove byte nulo
+            html_content = response.content.decode('utf-8', errors='ignore').replace('\x00', '')
 
             soup = BeautifulSoup(html_content, 'html.parser')
             text = soup.get_text()
-
-            return text.replace('\x00', '')  # Redundância defensiva
+            return text
         else:
             print(f'Erro ao acessar a página: {response.status_code}')
             return ""
+    except requests.RequestException as e:
+        print(f'Erro de rede ao buscar conteúdo de {url}: {e}')
+        return ""
     except Exception as e:
-        print(f'Erro ao buscar conteúdo de {url}: {e}')
+        print(f'Erro inesperado: {e}')
         return ""
 
 
