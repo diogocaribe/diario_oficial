@@ -5,26 +5,28 @@ import warnings
 
 
 def get_conteudo_texto_link(url: str) -> str:
-    # Fazer uma requisição para obter o conteúdo da página
-    # TODO Verificar o ssl no ambiente de produção.
-    # Suprime avisos de verificação de SSL
     warnings.filterwarnings('ignore', message='Unverified HTTPS request')
-    response = requests.get(url, verify=False)
+    
+    try:
+        response = requests.get(url, verify=False, timeout=10)
 
-    # Verificar se a requisição foi bem-sucedida
-    if response.status_code == 200:
-        # Obter o conteúdo HTML da página
-        html_content = response.text
+        if response.status_code == 200:
+            # Usa o .content (binário) e força decode com fallback seguro
+            html_content = response.content.decode('utf-8', errors='ignore')
 
-        # Crie um objeto BeautifulSoup
-        soup = BeautifulSoup(html_content, 'html.parser')
+            # Remove \x00 (NUL) manualmente, se sobrar algo
+            html_content = html_content.replace('\x00', '')
 
-        # Extraia o texto
-        text = soup.get_text()
+            soup = BeautifulSoup(html_content, 'html.parser')
+            text = soup.get_text()
 
-        return text
-    else:
-        print(f'Erro ao acessar a página: {response.status_code}')
+            return text.replace('\x00', '')  # Redundância defensiva
+        else:
+            print(f'Erro ao acessar a página: {response.status_code}')
+            return ""
+    except Exception as e:
+        print(f'Erro ao buscar conteúdo de {url}: {e}')
+        return ""
 
 
 def separar_ato(texto):
