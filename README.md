@@ -39,6 +39,7 @@ alembic upgrade head
 
 ## Criando o banco para iniciar a coleta de dados
 ```bash
-poetry shell
+poetry install # para criar o virtualenv do projeto
+source $(poetry env info --path)/bin/activate # ativando o ambiente virtual no servidor debian sem o plugin do poetry
 alembic upgrade head
 ```
