@@ -37,6 +37,11 @@ class Publicacao(Base):
         nullable=True,
         comment='Indicação se ocorreu o processamento do conteúdo da publicacao para ato.',
     )
+    auditoria: Mapped[bool] = mapped_column(
+        nullable=True,
+        comment='Indicação se ocorreu a verificação do correto processamento do conteúdo' \
+        ' da publicacao para ato.',
+    )
 
     poder = relationship('Poder', back_populates='publicacao')
     adm_direta = relationship('AdministracaoDireta', back_populates='publicacao')
