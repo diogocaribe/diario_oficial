@@ -8,5 +8,8 @@
     "python.analysis.extraPaths": [
         "./diario_oficial"
     ],
-    "editor.rulers": [100]
+    "editor.rulers": [
+        100
+    ],
+    "python.terminal.useEnvFile": true
 }
