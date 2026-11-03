@@ -59,16 +59,27 @@ def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = T
     """
     print('Transformando dados brutos em publicações.')
     if transformar_publicacao:
-        data = f"{data[-4:]}-{data[3:5]}-{data[:2]}"
-        dados = doe_bruto.explodir_doe_bruto_json(data=data)
-        print(dados)
+        data_iso = f"{data[-4:]}-{data[3:5]}-{data[:2]}"
+        registro = doe_bruto.check_if_date_doe_coleted(
+            data=datetime.strptime(data_iso, '%Y-%m-%d'))
+        if registro is None:
+            # Sem doe_bruto não há o que transformar: falha de verdade (raspagem não rodou)
+            print(f'[red]Nenhum doe_bruto coletado para {data}. '
+                  f'Rode "raspar-doe-bruto {data}" antes.[/red]')
+            raise typer.Exit(code=1)
+
+        dados = doe_bruto.explodir_doe_bruto_json(data=data_iso)
+        if not dados:
+            print(f'Edição de {data} sem publicações das pastas selecionadas. '
+                  'Nada a transformar.')
+        else:
+            print(dados)
+            if save_db:
+                # Salvando dados do do doe bruto em publicacao
+                publicacao.save_data(dados)
         if save_db:
-            # Salvando dados do do doe bruto em publicacao
-            publicacao.save_data(dados)
-            # Selecionar o id a partir da data da edicao (dt_edicao)
-            id_doe_bruto = doe_bruto.check_if_date_doe_coleted(
-                data=datetime.strptime(data, '%Y-%m-%d')).id
-            doe_bruto.update_doe_bruto_para_publicacao(id_doe=id_doe_bruto)
+            # Marca como processado mesmo vazio, para não ficar pendente
+            doe_bruto.update_doe_bruto_para_publicacao(id_doe=registro.id)
 
     try:
         lista_publicacao = publicacao.get_all_conteudo_link_none()

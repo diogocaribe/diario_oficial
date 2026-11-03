@@ -98,6 +98,11 @@ class DiarioOficialBrutoRepository:
         with DBConnectionHandler() as db:
             try:
                 nivel_data = calcular_profundidade_dict(self.get_json_data(data=data))
+                if nivel_data not in (4, 5):
+                    # doe_json vazio/nulo: edição sem publicações das pastas selecionadas
+                    # (ou edição inexistente, ex.: fim de semana/feriado)
+                    print(f'doe_json de {data} sem publicações (profundidade {nivel_data}).')
+                    return []
                 if nivel_data == 4:
                     print('Nivel 4')
                     sql = f"""
@@ -382,8 +387,6 @@ class DiarioOficialBrutoRepository:
                     # Converter os resultados para uma lista de dicionários
                     result = [dict(zip(columns, row)) for row in result.fetchall()]
                 return result
-            except UnboundLocalError:
-                print('Não existe registro no banco para esta data.')
             except Exception as exception:
                 raise exception
 
