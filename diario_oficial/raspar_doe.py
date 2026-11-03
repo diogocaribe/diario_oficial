@@ -5,32 +5,32 @@ NIVEL 2 = SECRETARIA, PROCURADORIA
 NIVEL 3 = Superintendencias,  Diretoria, Superintendência,
           Superintendências, Companhia, Departamento, Instituto, Policia, Corpo,
 NIVEL 4 = Atos, Outros
+
+A árvore do sumário é lida como uma lista plana de elementos '.folder' (na ordem em
+que aparecem na página). O nível de cada pasta é deduzido pelo texto e pela posição,
+guardando o nome da pasta-pai atual de cada nível.
 """
 
-from collections import namedtuple
-from functools import partial
-import time
 import datetime
+import time
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-import util as u
-from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
-from dados import doe_bruto
 
+import util as u
+from dados import doe_bruto  # noqa: F401 (reexportado para cli.py)
 from diario_oficial.settings import Settings
 
 # Primeiro data do diário oficial 05/01/2016??
 
 site_link = 'https://dool.egba.ba.gov.br/'
-data_inicial = datetime.date(2024, 11, 12)  # 2024, 3, 15 tem um caso especial
-data_final = datetime.date(2024, 11, 12)
+URL_CONTEUDO_PUBLICACAO = (
+    'https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/'
+)
 
-
-chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument('--headless')
-
-# LIsta de pastas que serão abertas para coleta de dados
+# Lista de pastas que serão abertas para coleta de dados
 # Nível 1
 selecao_pasta_nivel_1 = ['EXECUTIVO']  # "LICITAÇÕES"
 
@@ -50,33 +50,15 @@ selecao_pasta_nivel_2_municipio = []
 selecao_pasta_nivel_2_diverso = []
 selecao_pasta_nivel_2_especial = []
 
-
-def select_pasta_nivel_2(
-    lista1=selecao_pasta_nivel_2_executivo,
-    lista2=selecao_pasta_nivel_2_licitacao,
-    lista3=selecao_pasta_nivel_2_municipio,
-    lista4=selecao_pasta_nivel_2_diverso,
-    lista5=selecao_pasta_nivel_2_especial,
-):
-    """Juntando a lista de seleções das pastas.
-
-    Args:
-        lista1 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_executivo.
-        lista2 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_licitacao.
-        lista3 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_municipio.
-        lista4 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_diverso.
-        lista5 (_type_, optional): _description_. Defaults to selecao_pasta_nivel_2_especial.
-
-    Returns:
-        _type_: _description_
-    """
-    return set(lista1 + lista2 + lista3 + lista4 + lista5)
-
-
-selecao_pasta_nivel_2 = select_pasta_nivel_2()
+selecao_pasta_nivel_2 = set(
+    selecao_pasta_nivel_2_executivo
+    + selecao_pasta_nivel_2_licitacao
+    + selecao_pasta_nivel_2_municipio
+    + selecao_pasta_nivel_2_diverso
+    + selecao_pasta_nivel_2_especial
+)
 
 # Separar atos das instituições
-
 tipo_ato = ['Portarias', 'Outros', 'Resoluções']
 tipo_adm_direta = [
     'Diretoria',
@@ -88,474 +70,301 @@ tipo_adm_direta = [
     'Policia',
     'Corpo',
 ]
-
 tipo_adm_indireta = ['Diretoria', 'Diretoria Geral']
 
 
-# Clicar no botão para continuar sem cadastro
-def esperar_elemento(by, elemento, navegador):
-    """Função para realizar a espera do elemento na tela do navegador.
+def _listar_pastas(navegador) -> list:
+    """Lista as pastas visíveis do sumário como pares (texto, elemento).
 
-    Args:
-        by (_type_): _description_
-        elemento (_type_): _description_
-        driver (_type_): _description_
-
-    Returns:
-        _type_: _description_
+    O texto é lido uma única vez por elemento: cada leitura de `.text` é uma chamada
+    HTTP ao Selenium remoto. Pastas sem texto são descartadas.
     """
-    # print(f'Tentando encontrar "{elemento}" by {by}')
-    if navegador.find_elements(by, elemento):
-        return True
-    return False
-
-
-# Listar elementos da pagina que tenham nomes diferentes de '' (if i.text != '')
-def listar_elmento(navegador, by: By, name: str):
-    """Criar lista de elementos que o text não seja ''
-
-    Args:
-        by (By): _description_
-        name (str): _description_
-
-    Returns:
-        _type_: _description_
-    """
-    return [i for i in navegador.find_elements(by, name) if i.text != '']
-
-
-def coletar_lista_link_ato(navegador, i):
-    """Função que no ultimo nivel das pastas lista todos os atos.
-
-    Returns:
-        _type_: _description_
-    """
-    time.sleep(0.5)
-    i.click()
-    nt = namedtuple('ato', ['nome', 'identificador', 'link_conteudo'])
-    lista_ato = [
-        {
-            'nome': i.text,
-            'identificador': i.get_attribute('data-materia-id'),
-            'link': f"https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/{i.get_attribute('data-materia-id')}",
-        }
-        for i in listar_elmento(navegador, By.TAG_NAME, 'a')
-        if i.text[0] == '#'
+    return [
+        (texto, el)
+        for el in navegador.find_elements(By.CLASS_NAME, 'folder')
+        if (texto := el.text) != ''
     ]
-    time.sleep(0.5)
-    i.click()
-    return lista_ato
 
 
-# TEM DE CLICAR NA PASTA PARA LOOPAR O CONTEUDO
-# Abrindo as pastas do sumário para acessar o conteúdo
-# Primerio nivel de pastas
-def abrir_pastas(navegador, pastas: list):
-    """Esta função abrirá as pastas de interesse do diário oficial html
+def abrir_pastas(navegador, pastas):
+    """Clica (abre) as pastas visíveis cujo nome está em `pastas`.
 
     Args:
-        pastas (list): Opções de nome das pastas ['EXECUTIVO', 'LICITAÇÕES',
-        'MUNICÍPIOS', 'DIVERSOS', 'ESPECIAL']
+        pastas: Nomes das pastas, ex.: ['EXECUTIVO', 'LICITAÇÕES', 'MUNICÍPIOS'].
     """
-    for i in listar_elmento(navegador, By.CLASS_NAME, 'folder'):
-        if i.text in pastas:
+    for texto, el in _listar_pastas(navegador):
+        if texto in pastas:
             try:
                 time.sleep(0.5)
-                i.click()
+                el.click()
             except Exception as e:
                 print(e)
 
 
-def raspar_diario_oficial(data: str) -> dict:
-    """Função que coleta os dados sumarizados do diario oficial
-    do Estado da Bahia.
+def coletar_lista_link_ato(navegador, pasta) -> list[dict]:
+    """Abre uma pasta de atos, lista os atos (links que começam com '#') e a fecha."""
+    time.sleep(0.5)
+    pasta.click()
+    lista_ato = []
+    for link in navegador.find_elements(By.TAG_NAME, 'a'):
+        texto = link.text
+        if texto != '' and texto[0] == '#':
+            identificador = link.get_attribute('data-materia-id')
+            lista_ato.append(
+                {
+                    'nome': texto,
+                    'identificador': identificador,
+                    'link': f'{URL_CONTEUDO_PUBLICACAO}{identificador}',
+                }
+            )
+    time.sleep(0.5)
+    pasta.click()
+    return lista_ato
 
-    Args:
-        data (str): Data do diario oficial.
-                    Formato: 'YYYY-MM-DD'
 
-    Returns:
-        dict: _description_
+def _adicionar(pai: dict, chave: str, filho: str, valor):
+    """Faz pai[chave][filho] = valor.
+
+    Se pai[chave] estiver vazio (inclusive uma lista de atos vazia), ele é trocado por
+    {filho: valor}. É o comportamento original quando a heurística de níveis aponta
+    para uma pasta de atos.
     """
-    data_ = data.strftime('%d-%m-%Y')
-    print(f'Raspando o Diario oficial de: {data}')
-    print(f'{Settings().SELENIUM_ADDRESS}:{Settings().SELENIUM_PORT}')
-    # navegador = webdriver.Chrome(options=chrome_options)
-    navegador = webdriver.Remote(f'{Settings().SELENIUM_ADDRESS}:{Settings().SELENIUM_PORT}',
-                                 options=webdriver.ChromeOptions())
+    if not pai[chave]:
+        pai[chave] = {filho: valor}
+    else:
+        pai[chave].update({filho: valor})
 
-    # Sintaxe do wait
-    wdw = WebDriverWait(
-        navegador,  # webdriver
-        timeout=60,  # tempo de espera pelo erro
-        poll_frequency=0.5,  # tempo entre uma tentativa e outra
-        # ignored_exceptions=None, # Lista de coisas que vamos ignorar
-    )
 
-    # Abrindo a pagina principal do diário oficial
-    navegador.get(site_link)
-
-    # Clicar no botão da versão html do diário oficial
-    navegador.find_element(By.ID, 'downloadHTML').click()
-
-    # Janela para seleção de continuar na versão html
-    wdw.until(partial(esperar_elemento, By.CLASS_NAME, 'modal-footer'))
+def _confirmar_modal_html(navegador, wdw):
+    """Espera a janela de continuar na versão html e clica no botão dela."""
+    wdw.until(EC.presence_of_element_located((By.CLASS_NAME, 'modal-footer')))
     navegador.find_element(By.CLASS_NAME, 'modal-footer').find_element(
         By.TAG_NAME, 'button'
     ).click()
 
+
+def _abrir_edicao(navegador, wdw, data_: str):
+    """Abre o sumário html da edição da data informada.
+
+    Args:
+        data_: Data no formato 'DD-MM-YYYY'.
+
+    Returns:
+        (número da edição, url) ou None quando a edição não existe.
+    """
+    navegador.get(site_link)
+
+    # Clicar no botão da versão html do diário oficial (espera a página carregar)
+    wdw.until(EC.element_to_be_clickable((By.ID, 'downloadHTML'))).click()
+    _confirmar_modal_html(navegador, wdw)
+
     # Selecionando a data
     print('Clear date input')
     navegador.find_element(By.CLASS_NAME, 'date-input').clear()
-
     time.sleep(0.5)
     navegador.switch_to.alert.accept()
     print('Send date input')
     navegador.find_element(By.CLASS_NAME, 'date-input').send_keys(data_)
-
     print('Click date input')
     navegador.find_element(By.CLASS_NAME, 'date-input').click()
-
     print('Click search button')
     navegador.find_element(By.CLASS_NAME, 'fa-search').click()
 
     try:
-        # print("Tratando a edição não existente")
         time.sleep(2)
         alert = wdw.until(lambda d: d.switch_to.alert)
         if alert.text == 'Edição não existente!':
             alert.accept()
             time.sleep(1)
             print(f'Edição não existe: {data_}')
-            return {'dt_edicao': data, 'existe': False}
+            return None
     except Exception:
         print(f'Edição existente: {data_}')
 
-    # Janela para seleção de continuar na versão html
-    wdw.until(partial(esperar_elemento, By.CLASS_NAME, 'modal-footer'))
-    navegador.find_element(By.CLASS_NAME, 'modal-footer').find_element(
-        By.TAG_NAME, 'button'
-    ).click()
+    _confirmar_modal_html(navegador, wdw)
 
-    # Coletar o numero da edição
     edicao = int(
         navegador.find_element(By.CLASS_NAME, 'text-center')
         .find_element(By.TAG_NAME, 'strong')
         .text.split()[-1]
     )
-    url = navegador.current_url
-    ######################## NIVEL 1 ########################
-    # Listar pastas no nivel 1 do sumário
-    lista_pasta_nivel_1 = [
-        i.text for i in listar_elmento(navegador, By.CLASS_NAME, 'folder')
-    ]
-    nao_selecao_pasta_nivel_1 = set(lista_pasta_nivel_1) - set(selecao_pasta_nivel_1)
+    return edicao, navegador.current_url
 
-    abrir_pastas(navegador, pastas=selecao_pasta_nivel_1)
 
-    #########################################################
-    ######################## NIVEL 2 ########################
-    ###################### SECRETARIA #######################
-    #########################################################
-    lista_pasta_nivel_2 = [
-        i.text
-        for i in listar_elmento(navegador, By.CLASS_NAME, 'folder')
-        if i.text not in lista_pasta_nivel_1
-    ]
+def _montar_nivel_2(pastas, lista_pasta_nivel_2) -> dict:
+    """Cria a árvore {poder: {secretaria: {}}} com as pastas selecionadas."""
+    arvore = {}
+    n1 = None
+    for texto, _ in pastas:
+        if texto in selecao_pasta_nivel_1:
+            n1 = texto
+            arvore[n1] = {}
+        elif texto in lista_pasta_nivel_2 and texto in selecao_pasta_nivel_2:
+            arvore[n1][texto] = {}
+    return arvore
 
-    # Construindo o dicionario da árvore de todas as pastas nivel 2
-    dict_pasta_nivel_2 = {}
-    count_nivel_2 = 0
-    for i in listar_elmento(navegador, By.CLASS_NAME, 'folder'):
-        #  NIVEL 1
-        if i.text in selecao_pasta_nivel_1:
-            # Adicionando o primeiro nivel no dict
-            count_nivel_1 = selecao_pasta_nivel_1.index(i.text)
-            if (
-                not dict_pasta_nivel_2
-            ):  # testando se o dict esta vazio, se true o dict esta vazio
-                dict_pasta_nivel_2.update({selecao_pasta_nivel_1[count_nivel_1]: {}})
-                pass
-            if bool(dict_pasta_nivel_2):  # se true o dict tem dados nele
-                dict_pasta_nivel_2.update({selecao_pasta_nivel_1[count_nivel_1]: {}})
-        #  NIVEL 2
-        if i.text in lista_pasta_nivel_2:
-            count_nivel_2 = lista_pasta_nivel_2.index(i.text)
-        if (
-            i.text == lista_pasta_nivel_2[count_nivel_2]
-            # Selecionando as pastas nivel 2 que terão dados coletadas
-            and i.text in select_pasta_nivel_2()
+
+def _coletar_nivel_3(
+    navegador, arvore, pastas, lista_pasta_nivel_2, lista_pasta_nivel_3
+):
+    """Adiciona as pastas de adm direta e coleta os atos que estão no nível 3."""
+    n1 = n2 = None
+    for texto, el in pastas:
+        if texto in selecao_pasta_nivel_1:
+            n1 = texto
+        if texto in lista_pasta_nivel_2:
+            n2 = texto
+        if texto not in lista_pasta_nivel_3:
+            continue
+        if u.check_word_or_list_exist_in_list(texto, tipo_adm_direta):
+            arvore[n1][n2][texto] = {}
+        if u.check_word_or_list_exist_in_list(texto, tipo_ato):
+            print(texto)
+            arvore[n1][n2][texto] = coletar_lista_link_ato(navegador, el)
+
+
+def _coletar_nivel_4(navegador, arvore, lista_pasta_nivel_2, lista_pasta_clicar):
+    """Coleta a primeira pasta de atos que aparece depois de cada pasta de adm direta."""
+    n1 = n2 = n3 = None
+    aguardando_ato = False
+    for texto, el in _listar_pastas(navegador):
+        if texto in selecao_pasta_nivel_1:
+            n1 = texto
+            aguardando_ato = False
+        if texto in lista_pasta_nivel_2:
+            n2 = texto
+        if texto in lista_pasta_clicar and u.check_word_or_list_exist_in_list(
+            texto, tipo_adm_direta
         ):
-            if not dict_pasta_nivel_2:  # se true o dict esta vazio
-                dict_pasta_nivel_2 = {
-                    selecao_pasta_nivel_1[count_nivel_1]: {i.text: {}}
-                }
-            elif bool(dict_pasta_nivel_2):  # se true o dict tem dados nele
-                dict_pasta_nivel_2[selecao_pasta_nivel_1[count_nivel_1]].update(
-                    {i.text: {}}
-                )
+            n3 = texto
+            aguardando_ato = True
+        if aguardando_ato and u.check_word_or_list_exist_in_list(texto, tipo_ato):
+            print(texto)
+            pai = arvore[n1][n2]
+            if not pai[n3]:
+                pai[n3] = {texto: coletar_lista_link_ato(navegador, el)}
+            aguardando_ato = False
 
-    print(dict_pasta_nivel_2)
 
-    # Clicando nas no nivel 2 (SECRETARIAS)
-    abrir_pastas(navegador, pastas=selecao_pasta_nivel_2)
+def _percorrer_nivel_5(pastas, lista_pasta_nivel_2, lista_pasta_nivel_3):
+    """Percorre as pastas acompanhando a posição na árvore para o nível 5.
 
-    #########################################################
-    ######################## NIVEL 3 ########################
-    ############# AUTARQUIAS, SUPERINTENDENCIA ##############
-    #########################################################
-    # Lista nivel 3 das pastas
-    print('Construindo pastas nivel 3')
-    lista_pasta_nivel_3 = [
-        i.text
-        for i in listar_elmento(navegador, By.CLASS_NAME, 'folder')
-        if i.text not in lista_pasta_nivel_1
-        and i.text not in lista_pasta_nivel_2
-        # Todas as pasta nivel 3 tem padrão camel case (ex. Portaria)
-        and i.text[1].islower()
-    ]
+    A pasta de nível 3 atual é deduzida contando quantas pastas com nome de nível 3
+    já apareceram (`count_nivel_3`). O nível 4 (Diretoria, Diretoria Geral) só é
+    considerado depois que essa contagem passa do tamanho da lista do nível 3.
 
-    # Construindo o dicionario da árvore de todas as pastas nivel 3
-    dict_pasta_nivel_3 = dict_pasta_nivel_2.copy()
-    count_nivel_1 = 0
-    count_nivel_2 = 0
-    count_nivel_3 = 0
-    for i in listar_elmento(navegador, By.CLASS_NAME, 'folder'):
-        #  NIVEL 1
-        if i.text in selecao_pasta_nivel_1:
-            # Adicionando o primeiro nivel no dict
-            index_nivel_1 = selecao_pasta_nivel_1.index(i.text)
-            count_nivel_1 += 1
-            count_nivel_2 = 0
-            count_nivel_3 = 0
-        #  NIVEL 2
-        if i.text in lista_pasta_nivel_2:
-            index_nivel_2 = lista_pasta_nivel_2.index(i.text)
-            count_nivel_2 += 1
-        #  NIVEL 3
-        if i.text in lista_pasta_nivel_3:
-            # Fazer o filtro por atos e depois adicionar autarquias
-            index_nivel_3 = lista_pasta_nivel_3.index(i.text)
-            if u.check_word_or_list_exist_in_list(
-                i.text, tipo_adm_direta
-            ):  # Se verdadeiro é um setor da adm direta
-                select_dict = dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
-                    lista_pasta_nivel_2[index_nivel_2]
-                ]
-
-                if not select_dict:  # Se true o dict vazio
-                    dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
-                        lista_pasta_nivel_2[index_nivel_2]
-                    ] = {i.text: {}}
-                    pass
-
-                # Aqui é adicionando o INEMA no dict
-                if bool(select_dict):  # Se False dict tem dados
-                    select_dict.update({i.text: {}})
-                    pass
-            if u.check_word_or_list_exist_in_list(
-                i.text, tipo_ato
-            ):  # Se verdadeiro é uma pasta de atos
-                print(i.text)
-                select_dict = dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
-                    lista_pasta_nivel_2[index_nivel_2]
-                ]
-
-                if not select_dict:  # Se true o dict vazio
-                    # Adicionar
-                    dict_pasta_nivel_3[lista_pasta_nivel_1[index_nivel_1]][
-                        lista_pasta_nivel_2[index_nivel_2]
-                    ] = {i.text: coletar_lista_link_ato(navegador, i)}
-                    pass
-
-                if bool(select_dict):  # Se False dict tem dados
-                    # Verificar se vai precisar adicionar a adição do ato nesta parte do codigo
-                    select_dict.update({i.text: coletar_lista_link_ato(navegador, i)})
-                    pass
-
-    # Clicando nas no nivel 3 (Autarquias, Superintendencias, Diretorias)
-    lista_pasta_clicar = set(lista_pasta_nivel_3) - set(
-        lista_pasta_nivel_3
-    ).intersection(tipo_ato)
-    abrir_pastas(navegador, set(lista_pasta_clicar))
-
-    #########################################################
-    ######################## NIVEL 4 ########################
-    ######################### ATOS ##########################
-    #########################################################
-    print('Construindo pastas nivel 4')
-    lista_elemento_pasta = listar_elmento(navegador, By.CLASS_NAME, 'folder')
-    lista_nivel_4_ = {
-        i.text
-        for i in lista_elemento_pasta
-        if i.text not in lista_pasta_nivel_1
-        and i.text not in lista_pasta_nivel_2
-        and i.text not in lista_pasta_nivel_3
-    }
-
-    lista_nivel_4__ = {i.text for i in lista_elemento_pasta if i.text in tipo_ato}
-
-    # Tive que realizar essa união por causa que a lista_pasta_nivel_3 retirava os ato da lista
-    lista_pasta_nivel_4 = lista_nivel_4_.union(lista_nivel_4__)
-
-    # Construindo o dicionario da árvore de todas as pastas nivel 4
-    dict_pasta_nivel_4 = dict_pasta_nivel_3.copy()
-    count_nivel_1 = 0
-    count_nivel_2 = 0
-    count_nivel_3 = 0
-    count_nivel_4 = 0
-    for i in listar_elmento(navegador, By.CLASS_NAME, 'folder'):
-        #  NIVEL 1
-        if i.text in selecao_pasta_nivel_1:
-            # Adicionando o primeiro nivel no dict
-            index_nivel_1 = selecao_pasta_nivel_1.index(i.text)
-            count_nivel_1 += 1
-            count_nivel_2 = 0
-            count_nivel_3 = 0
-            count_nivel_4 = 0
-        #  NIVEL 2
-        if i.text in lista_pasta_nivel_2:
-            index_nivel_2 = lista_pasta_nivel_2.index(i.text)
-            count_nivel_2 += 1
-        #  NIVEL 3
-        if i.text in lista_pasta_nivel_3:
-            # Fazer o filtro por atos e depois adicionar autarquias
-            index_nivel_3 = lista_pasta_nivel_3.index(i.text)
+    Yields:
+        (texto, elemento, n1, n2, count_nivel_3, n4, ativo). A pasta de nível 3 é
+        `lista_pasta_nivel_3[count_nivel_3 - 1]`; `ativo` indica que já se está
+        dentro de uma pasta de adm indireta.
+    """
+    n1 = n2 = n4 = None
+    count_nivel_3 = count_nivel_4 = 0
+    for texto, el in pastas:
+        if texto in selecao_pasta_nivel_1:
+            n1 = texto
+            count_nivel_3 = count_nivel_4 = 0
+        if texto in lista_pasta_nivel_2:
+            n2 = texto
+        if texto in lista_pasta_nivel_3:
             count_nivel_3 += 1
-        if i.text in lista_pasta_clicar:
-            if u.check_word_or_list_exist_in_list(
-                i.text, tipo_adm_direta
-            ):  # Se verdadeiro é um setor da adm direta
-                index_nivel_4 = list(lista_pasta_clicar).index(i.text)
-                count_nivel_4 += 1
-        if (
-            u.check_word_or_list_exist_in_list(i.text, tipo_ato) and count_nivel_4 != 0
-        ):  # Se verdadeiro é uma pasta de atos
-            print(i.text)
-
-            select_dict = dict_pasta_nivel_4[lista_pasta_nivel_1[index_nivel_1]][
-                lista_pasta_nivel_2[index_nivel_2]
-            ][list(lista_pasta_clicar)[index_nivel_4]]
-
-            if not select_dict:  # Se true o dict vazio
-                # Adicionar
-                dict_pasta_nivel_4[lista_pasta_nivel_1[index_nivel_1]][
-                    lista_pasta_nivel_2[index_nivel_2]
-                ][list(lista_pasta_clicar)[index_nivel_4]] = {
-                    i.text: coletar_lista_link_ato(navegador, i)
-                }
-                # pass
-
-            count_nivel_4 = 0
-        # TODO a solução deve ser construir o nivel 5 para incorporar a pasta do INEMA
-
-    #########################################################
-    ######################## NIVEL 5 ########################
-    ############# DIRETORIA,  SUPERINTENDENCIA ##############
-    #########################################################
-    # Lista nivel 3 das pastas
-    print('Abrindo pastas nivel 5')  # --> Diretoria
-
-    # Construindo o dicionario da árvore de todas as pastas nivel 5
-    dict_pasta_nivel_5 = dict_pasta_nivel_4.copy()
-    count_nivel_1 = 0
-    count_nivel_2 = 0
-    count_nivel_3 = 0
-    count_nivel_4 = 0
-    # ABRINDO A PASTA DO NIVEL 5
-    for i in listar_elmento(navegador, By.CLASS_NAME, 'folder'):
-        #  NIVEL 1 (Poder)
-        if i.text in selecao_pasta_nivel_1:
-            # Adicionando o primeiro nivel no dict
-            index_nivel_1 = selecao_pasta_nivel_1.index(i.text)
-            count_nivel_1 += 1
-            count_nivel_2 = 0
-            count_nivel_3 = 0
-            count_nivel_4 = 0
-            count_nivel_5 = 0
-        #  NIVEL 2 (Secretaria)
-        if i.text in lista_pasta_nivel_2:
-            index_nivel_2 = lista_pasta_nivel_2.index(i.text)
-            count_nivel_2 += 1
-        #  NIVEL 3 (Instituto Meio Ambiente)
-        if i.text in lista_pasta_nivel_3:
-            index_nivel_3 = lista_pasta_nivel_3.index(i.text)
-            count_nivel_3 += 1
-        # NIVEL 4 (Diretoria Geral, Diretoria, divisao_adm_indireta)
-        if i.text in tipo_adm_indireta and count_nivel_3 > len(lista_pasta_nivel_3):
-            # Verificando para saber em qual local da pasta o codigo esta
-            index_nivel_4 = tipo_adm_indireta.index(i.text)
+        if texto in tipo_adm_indireta and count_nivel_3 > len(lista_pasta_nivel_3):
+            n4 = texto
             count_nivel_4 += 1
+        ativo = count_nivel_4 != 0
+        if texto in tipo_adm_indireta and ativo and texto in lista_pasta_nivel_3:
+            count_nivel_3 -= 1
+        yield texto, el, n1, n2, count_nivel_3, n4, ativo
 
-        if i.text in tipo_adm_indireta and count_nivel_4 != 0:
+
+def _coletar_nivel_5(navegador, arvore, lista_pasta_nivel_2, lista_pasta_nivel_3):
+    """Abre as pastas de adm indireta (Diretorias) e coleta os atos dentro delas."""
+    print('Abrindo pastas nivel 5')
+    for texto, _, n1, n2, count_nivel_3, _, ativo in _percorrer_nivel_5(
+        _listar_pastas(navegador), lista_pasta_nivel_2, lista_pasta_nivel_3
+    ):
+        if texto in tipo_adm_indireta and ativo:
+            # TODO: abre (clica) todas as Diretorias a cada Diretoria encontrada,
+            # iterando sobre a lista antiga de elementos; pode reabrir/fechar pastas.
             abrir_pastas(navegador, set(tipo_adm_indireta))
-            if i.text in lista_pasta_nivel_3:
-                count_nivel_3 -= 1
-            # Adicionei -1 ao count_nivel_3 dado que a indexação começa no 0
-            select_dict = dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
-                lista_pasta_nivel_2[index_nivel_2]
-            ][lista_pasta_nivel_3[count_nivel_3 - 1]]
-            if not select_dict:  # Se true o dict vazio
-                dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
-                    lista_pasta_nivel_2[index_nivel_2]
-                ][lista_pasta_nivel_3[count_nivel_3 - 1]] = {i.text: {}}
+            pasta_nivel_3 = lista_pasta_nivel_3[count_nivel_3 - 1]
+            _adicionar(arvore[n1][n2], pasta_nivel_3, texto, {})
 
-            # Se houver mais do que um tipo de adm indireta o codigo abaixo adicinará as seguintes
-            if bool(select_dict):  # Se False dict tem dados
-                select_dict.update({i.text: {}})
-
-    dict_pasta_nivel_5 = dict_pasta_nivel_4.copy()
-    count_nivel_1 = 0
-    count_nivel_2 = 0
-    count_nivel_3 = 0
-    count_nivel_4 = 0
-    # Coletando os dados NIVEL 5
     print('Coletando dados no NIVEL 5')
-    for i in listar_elmento(navegador, By.CLASS_NAME, 'folder'):
-        #  NIVEL 1 (Poder)
-        if i.text in selecao_pasta_nivel_1:
-            # Adicionando o primeiro nivel no dict
-            index_nivel_1 = selecao_pasta_nivel_1.index(i.text)
-            count_nivel_1 += 1
-            count_nivel_2 = 0
-            count_nivel_3 = 0
-            count_nivel_4 = 0
-        #  NIVEL 2 (Secretaria)
-        if i.text in lista_pasta_nivel_2:
-            index_nivel_2 = lista_pasta_nivel_2.index(i.text)
-            count_nivel_2 += 1
-        #  NIVEL 3 (Instituto Meio Ambiente)
-        if i.text in lista_pasta_nivel_3:
-            index_nivel_3 = lista_pasta_nivel_3.index(i.text)
-            count_nivel_3 += 1
-        # NIVEL 4 (Diretoria Geral, Diretoria, divisao_adm_indireta)
-        if i.text in tipo_adm_indireta and count_nivel_3 > len(lista_pasta_nivel_3):
-            # Verificando para saber em qual local da pasta o codigo esta
-            index_nivel_4 = tipo_adm_indireta.index(i.text)
-            count_nivel_4 += 1
+    for texto, el, n1, n2, count_nivel_3, n4, ativo in _percorrer_nivel_5(
+        _listar_pastas(navegador), lista_pasta_nivel_2, lista_pasta_nivel_3
+    ):
+        if ativo and u.check_word_or_list_exist_in_list(texto, tipo_ato):
+            print(texto)
+            pasta_nivel_3 = lista_pasta_nivel_3[count_nivel_3 - 1]
+            pai = arvore[n1][n2][pasta_nivel_3]
+            if not pai[n4]:
+                pai[n4] = {texto: coletar_lista_link_ato(navegador, el)}
 
-        if i.text in tipo_adm_indireta and count_nivel_4 != 0:
-            if i.text in lista_pasta_nivel_3:
-                count_nivel_3 -= 1
-        if (
-            u.check_word_or_list_exist_in_list(i.text, tipo_ato) and count_nivel_4 != 0
-        ):  # Se verdadeiro é uma pasta de atos
-            print(i.text)
 
-            select_dict = dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
-                lista_pasta_nivel_2[index_nivel_2]
-            ][lista_pasta_nivel_3[count_nivel_3 - 1]][tipo_adm_indireta[index_nivel_4]]
+def raspar_diario_oficial(data: datetime.date) -> dict:
+    """Coleta os dados sumarizados do diario oficial do Estado da Bahia.
 
-            if not select_dict:  # Se true o dict vazio
-                # Adicionar
-                dict_pasta_nivel_5[lista_pasta_nivel_1[index_nivel_1]][
-                    lista_pasta_nivel_2[index_nivel_2]
-                ][lista_pasta_nivel_3[count_nivel_3 - 1]][
-                    tipo_adm_indireta[index_nivel_4]
-                ] = {i.text: coletar_lista_link_ato(navegador, i)}
+    Args:
+        data: Data do diario oficial.
+
+    Returns:
+        dict com 'doe_json', 'nro_edicao', 'dt_edicao', 'existe' e 'url', ou
+        {'dt_edicao': data, 'existe': False} quando não há edição na data.
+    """
+    data_ = data.strftime('%d-%m-%Y')
+    print(f'Raspando o Diario oficial de: {data}')
+    settings = Settings()
+    endereco_selenium = f'{settings.SELENIUM_ADDRESS}:{settings.SELENIUM_PORT}'
+    print(endereco_selenium)
+    navegador = webdriver.Remote(endereco_selenium, options=webdriver.ChromeOptions())
+    try:
+        wdw = WebDriverWait(navegador, timeout=60, poll_frequency=0.5)
+
+        edicao_aberta = _abrir_edicao(navegador, wdw, data_)
+        if edicao_aberta is None:
+            return {'dt_edicao': data, 'existe': False}
+        edicao, url = edicao_aberta
+
+        # NIVEL 1 (Poder)
+        lista_pasta_nivel_1 = [texto for texto, _ in _listar_pastas(navegador)]
+        abrir_pastas(navegador, selecao_pasta_nivel_1)
+
+        # NIVEL 2 (Secretaria)
+        pastas = _listar_pastas(navegador)
+        lista_pasta_nivel_2 = [t for t, _ in pastas if t not in lista_pasta_nivel_1]
+        arvore = _montar_nivel_2(pastas, lista_pasta_nivel_2)
+        print(arvore)
+        abrir_pastas(navegador, selecao_pasta_nivel_2)
+
+        # NIVEL 3 (Autarquias, Superintendências e atos da secretaria)
+        print('Construindo pastas nivel 3')
+        pastas = _listar_pastas(navegador)
+        lista_pasta_nivel_3 = [
+            t
+            for t, _ in pastas
+            if t not in lista_pasta_nivel_1
+            and t not in lista_pasta_nivel_2
+            # Todas as pastas nivel 3 tem padrão camel case (ex. Portaria)
+            and t[1].islower()
+        ]
+        _coletar_nivel_3(
+            navegador, arvore, pastas, lista_pasta_nivel_2, lista_pasta_nivel_3
+        )
+        lista_pasta_clicar = set(lista_pasta_nivel_3) - set(tipo_ato)
+        abrir_pastas(navegador, lista_pasta_clicar)
+
+        # NIVEL 4 (Atos das autarquias/superintendências)
+        print('Construindo pastas nivel 4')
+        _coletar_nivel_4(navegador, arvore, lista_pasta_nivel_2, lista_pasta_clicar)
+
+        # NIVEL 5 (Diretoria, Diretoria Geral → atos)
+        _coletar_nivel_5(navegador, arvore, lista_pasta_nivel_2, lista_pasta_nivel_3)
+    finally:
+        navegador.quit()
 
     return {
-        'doe_json': dict_pasta_nivel_5,
+        'doe_json': arvore,
         'nro_edicao': edicao,
         'dt_edicao': data,
         'existe': True,
@@ -563,21 +372,16 @@ def raspar_diario_oficial(data: str) -> dict:
     }
 
 
-def coleta_doe_data(data: str):
-    """Esta função raspa e salva os dados no banco a partir de uma única data
-
-    Args:
-        data (str): _description_
-    """
-    if doe_bruto.check_if_date_doe_coleted(data) is None:
-        try:
-            a = raspar_diario_oficial(data=data)
-        except Exception as exception:
-            print(exception)
-
-        dados = DiarioOficialBrutoRepository()
-        try:
-            # TODO como tratar a existência de uma data já coletada
-            dados.save_data(**a)
-        except Exception as e:
-            print(f'Erro: {e}')
+def coleta_doe_data(data: datetime.date):
+    """Raspa e salva no banco o diário oficial de uma data, se ainda não foi coletado."""
+    if doe_bruto.check_if_date_doe_coleted(data) is not None:
+        return
+    try:
+        resultado = raspar_diario_oficial(data=data)
+    except Exception as exception:
+        print(exception)
+        return
+    try:
+        doe_bruto.save_data(**resultado)
+    except Exception as e:
+        print(f'Erro: {e}')
