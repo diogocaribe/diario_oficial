@@ -7,9 +7,22 @@ services:
       dockerfile: Dockerfile
     volumes:
       - .:/diario_oficial
+    environment:
+      # Dentro da rede 'inema' os serviços são acessados pelo nome, não por localhost.
+      # Variáveis de ambiente têm precedência sobre o .env no pydantic-settings.
+      HOST: postgres
+      PORT: 5432
+      DATABASE_URL: postgresql+psycopg://${USER_DB:-postgres}:${PASSWORD_DB:-postgres}@postgres:5432/${DATABASE:-diario_oficial}
+      SELENIUM_ADDRESS: http://selenium
+      SELENIUM_PORT: 4444
+    depends_on:
+      postgres:
+        condition: service_healthy
+      selenium:
+        condition: service_started
     networks:
       - inema
-  
+
   selenium:
     image: selenium/standalone-chrome:134.0-20250303
     container_name: selenium
@@ -19,11 +32,36 @@ services:
       - "4444:4444"
     environment:
       SE_NODE_MAX_SESSIONS: 4
-      SE_NODE_SESSION_TIMEOUT: 30
+      SE_NODE_SESSION_TIMEOUT: 300
       # SE_NODE_OVERRIDE_MAX_SESSIONS: "true"
     networks:
       - inema
-    
+
+  postgres:
+    image: postgres:18
+    container_name: postgres
+    restart: always
+    ports:
+      - "${HOST_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DATABASE:-diario_oficial}
+      POSTGRES_USER: ${USER_DB:-postgres}
+      POSTGRES_PASSWORD: ${PASSWORD_DB:-postgres}
+    volumes:
+      # A partir do 18 o PGDATA fica em /var/lib/postgresql/18/docker;
+      # o volume deve ser montado em /var/lib/postgresql (não mais em .../data).
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - inema
+
+volumes:
+  postgres_data:
+
 networks:
   inema:
     name: inema

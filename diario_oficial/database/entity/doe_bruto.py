@@ -12,6 +12,12 @@ class DiarioOficialBruto(Base):
     Diário Oficial Estado = doe.
     nro = numero
     dt = data
+
+    Toda data verificada tem uma linha aqui:
+    - `existe=False`: não há edição na data;
+    - `existe=True` com `doe_json` sem secretarias (`{}` ou `{'EXECUTIVO': {}}`):
+      há edição, mas sem publicação das pastas selecionadas;
+    - `existe=True` com `doe_json` preenchido: há publicações a transformar.
     """
 
     __tablename__ = 'doe_bruto'

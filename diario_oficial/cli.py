@@ -15,21 +15,29 @@ app = typer.Typer()
 
 
 @app.command()
-def raspar_doe_bruto(data: str, save_db: bool = True):
+def raspar_doe_bruto(data: str, save_db: bool = True, forcar: bool = False):
     """Esta função raspa dos dados e salva no banco de dados
 
     Args: \n
         data (str): Data 'DD-MM-YYYY' \n
-        save_db (bool, optional): Indicar se salva ou não no banco. Padrão é False.
-    
+        save_db (bool, optional): Indicar se salva ou não no banco. Padrão é True. \n
+        forcar (bool, optional): Raspa mesmo que a data já esteja em doe_bruto. Não
+        sobrescreve a linha existente: para regravar, apague-a antes. Padrão é False.
+
     Examples: \n
         >>> python diario_oficial/cli.py raspar-doe-bruto '12-11-2024' --no-save-db \n
-        >>> python diario_oficial/cli.py raspar-doe-bruto '12-11-2024' --save-db
+        >>> python diario_oficial/cli.py raspar-doe-bruto '12-11-2024' --save-db \n
+        >>> python diario_oficial/cli.py raspar-doe-bruto '12-11-2024' --forcar
     """
-    print(f'Raspando os dados do Diário Oficial Bahia de {data}')
-    # with redirect_stdout(StringIO()):
+    data_str = data
+    data = datetime.strptime(data_str, '%d-%m-%Y')
+    if not forcar and doe_bruto.check_if_date_doe_coleted(data.date()) is not None:
+        print(f'Data {data_str} já coletada. Nada a raspar '
+              '(use --forcar para raspar novamente).')
+        return
+
+    print(f'Raspando os dados do Diário Oficial Bahia de {data_str}')
     with redirect_stdout(StringIO()):
-        data = datetime.strptime(data, '%d-%m-%Y')
         resultado = raspar_diario_oficial(data)  # Os prints serão suprimidos
         # Exibe apenas o retorno final, sem os prints internos da função
     print(Pretty(resultado))

@@ -372,16 +372,23 @@ def raspar_diario_oficial(data: datetime.date) -> dict:
     }
 
 
-def coleta_doe_data(data: datetime.date):
-    """Raspa e salva no banco o diário oficial de uma data, se ainda não foi coletado."""
-    if doe_bruto.check_if_date_doe_coleted(data) is not None:
-        return
+def coleta_doe_data(data: datetime.date) -> bool:
+    """Raspa e salva no banco o diário oficial de uma data, se ainda não foi coletado.
+
+    Returns:
+        True se a data tem edição em `doe_bruto` (com ou sem publicações).
+    """
+    registro = doe_bruto.check_if_date_doe_coleted(data)
+    if registro is not None:
+        return registro.existe
     try:
         resultado = raspar_diario_oficial(data=data)
     except Exception as exception:
         print(exception)
-        return
+        return False
     try:
         doe_bruto.save_data(**resultado)
     except Exception as e:
         print(f'Erro: {e}')
+        return False
+    return resultado['existe']

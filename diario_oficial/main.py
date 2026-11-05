@@ -33,12 +33,15 @@ def pipeline(data: datetime):
         return
 
     try:
-        coleta_doe_data(data=data)
+        if not coleta_doe_data(data=data):
+            print(f'Nada a transformar em {data}.')
+            return
 
         dados = doe_bruto.explodir_doe_bruto_json(data=data)
 
-        # Salvando dados do do doe bruto em publicacao
-        publicacao.save_data(dados)
+        if dados:
+            # Salvando dados do do doe bruto em publicacao
+            publicacao.save_data(dados)
         # Selecionar o id a partir da data da edicao (dt_edicao)
         id_doe_bruto = doe_bruto.check_if_date_doe_coleted(data=data).id
         # Atualizar doe_bruto_para_pucalicaçao
