@@ -1,4 +1,5 @@
 {
+    "python.defaultInterpreterPath": "/home/diogocaribe/.cache/pypoetry/virtualenvs/diario-oficial-49BYh5M--py3.12/bin/python",
     "python.testing.pytestArgs": [
         "tests"
     ],

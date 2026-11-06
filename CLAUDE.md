@@ -60,8 +60,11 @@ DOE (site) ──Selenium──▶ processing.doe_bruto (doe_json JSONB, uma lin
   atos da mesma publicação e volta `publicacao.processada_para_ato` para NULL. É a forma de
   reprocessar uma publicação.
 - Colunas de controle do pipeline: `doe_bruto.doe_bruto_para_publicacao`,
-  `publicacao.conteudo_link`, `publicacao.processada_para_ato`. `publicacao.auditoria` existe
-  (entidade, migração, view), mas nenhum código grava ou filtra por ela ainda.
+  `publicacao.conteudo_link`, `publicacao.processada_para_ato`.
+- `publicacao.auditoria` é gravada por `auditar-publicacao-ato` (regras em
+  `diario_oficial/auditoria.py`): `true` se todos os atos da publicação foram separados
+  corretamente, `false` caso contrário, `NULL` se não foi auditada. Reprocessar uma publicação
+  não limpa a coluna: rode a auditoria de novo depois.
 - Entidades em `diario_oficial/database/entity/`, repositórios em
   `diario_oficial/database/repository/`, conexão em `database/configs/connection.py`
   (`DBConnectionHandler`, context manager que abre/fecha a sessão).
@@ -85,22 +88,27 @@ docker compose up -d selenium     # Chrome remoto na porta 4444 (rede externa 'i
 python diario_oficial/cli.py raspar-doe-bruto 12-11-2024 [--no-save-db]
 python diario_oficial/cli.py transformar-doe-bruto-publicacao 12-11-2024 [--no-transformar-publicacao] [--no-save-db]
 python diario_oficial/cli.py transformar-publicacao-ato
+python diario_oficial/cli.py auditar-publicacao-ato 12-11-2024 [--no-save-db]
 
 # Via container: o ENTRYPOINT do Dockerfile já é `python diario_oficial/cli.py`
 docker compose run --rm app raspar-doe-bruto 12-11-2024 --no-save-db
 
+# Pipeline completo em um período (raspagem, publicação, ato e auditoria); padrão de 3 meses
+Scripts/pipeline_periodo.sh -i 01-07-2026
+
 ruff check . && ruff format .     # linha 88, aspas simples
 
-# Testes: não há config de pytest; `pytest` puro falha na coleta (ver Armadilhas).
-# (nomes de arquivo/teste abaixo são exemplos; hoje só existe o teste quebrado)
-pytest tests/test_separar_ato.py                       # um arquivo
-pytest tests/test_separar_ato.py::test_portaria -v     # um teste
-pytest --ignore=tests/test_diario_oficial.py           # suíte sem o teste quebrado
+# Testes: `addopts` em pyproject.toml ignora o teste quebrado (ver Armadilhas).
+pytest                                                 # suíte inteira
+pytest tests/test_auditoria.py                         # um arquivo
+pytest tests/test_auditoria.py::test_ato_cortado_no_meio_da_frase -v # um teste
 ```
 
-Para importar `transformacao`, `util` etc. nos testes, `diario_oficial/` precisa estar no
-`sys.path` (ex.: `pythonpath = ["diario_oficial"]` em `[tool.pytest.ini_options]`, que ainda
-não existe no `pyproject.toml`).
+Nos testes, importe pelo pacote (`from diario_oficial.transformacao import ...`).
+
+O ambiente local do Poetry fica fora do repositório, em `~/.cache/pypoetry/virtualenvs`, e é
+o interpretador usado pelo painel de testes do VS Code. Não crie `.venv` na raiz: o compose
+monta a raiz no container e o `poetry run` do `ENTRYPOINT` passaria a usar esse ambiente.
 
 `.vscode/launch.json` tem configurações de debug prontas para cada comando da CLI.
 
@@ -130,7 +138,11 @@ importado**, com `data_inicio`/`data_fim` fixos no código. Não importe esse m�
 - `separar_ato` compila o padrão com `re.VERBOSE`, que **ignora espaços literais**:
   `ERRATA REFERENTE` vira `ERRATAREFERENTE` e nunca casa com o texto real. Em termos com
   várias palavras use `\s+`. A ordem das alternativas importa (`PORTARIA` e `RESUMO` sozinhos
-  aparecem antes das variantes mais longas e as escondem).
+  aparecem antes das variantes mais longas e as escondem). Termos colados ao texto anterior
+  ou depois de uma palavra de `PALAVRAS_DE_CITACAO` ("nomeados pela PORTARIA Nº ...") são
+  citações e não iniciam ato. O preâmbulo `A DIRETORA GERAL DO INSTITUTO ... DECIDE/RESOLVE:`
+  antes de `PORTARIA Nº` fica fora dos atos, e a auditoria o aceita em `TEXTO_FORA_DOS_ATOS`;
+  já o `O DIRETOR GERAL ...` continua abrindo o ato seguinte.
 - `raspar-doe-bruto` envolve a raspagem em `redirect_stdout(StringIO())`: os `print` de
   `raspar_doe` somem. Para depurar, chame `raspar_diario_oficial` direto ou remova o redirect.
 - `SELENIUM_ADDRESS` precisa incluir o esquema (`http://...`); a URL é montada como
@@ -143,8 +155,8 @@ importado**, com `data_inicio`/`data_fim` fixos no código. Não importe esse m�
 - `util.check_word_or_list_exist_in_list` só verifica a **primeira** palavra (o `return False`
   está dentro do loop). Várias regras de nível dependem desse comportamento; não "corrija"
   sem verificar a raspagem.
-- `tests/test_diario_oficial.py` importa `scripts.diario_oficial`, que não existe, então
-  `pytest` sem argumentos falha na coleta. Testes novos devem ser unitários (regex de `separar_ato`, `util`,
+- `tests/test_diario_oficial.py` importa `scripts.diario_oficial`, que não existe; por isso é
+  ignorado via `addopts`. Testes novos devem ser unitários (regex de `separar_ato`, `util`,
   `calcular_profundidade_dict`) e não depender de rede, Selenium ou banco.
 - `rich` é usado na CLI mas vem como dependência transitiva do Typer.
 - `.project` é do DBeaver; `doc/banco_dado/` contém os modelos conceitual (UML/ODS) e lógico
