@@ -247,7 +247,8 @@ class DiarioOficialBrutoRepository:
                     ) t
                     LEFT JOIN dominio.tipo_publicacao tp2 ON tp2.nome = t.tipo_publicacao;
                     """
-                    result = db.get_engine().connect().execute(text(sql))
+                    # Pela sessão, a conexão volta ao pool ao sair do `with`
+                    result = db.session.execute(text(sql))
                     columns = result.keys()
                     # Converter os resultados para uma lista de dicionários
                     result = [dict(zip(columns, row)) for row in result.fetchall()]
@@ -382,7 +383,8 @@ class DiarioOficialBrutoRepository:
                     LEFT JOIN dominio.divisao_adm_indireta dai ON dai.nome = divisao_adm_indireta
                     LEFT JOIN dominio.tipo_publicacao tp ON tp.nome = tipo_publicacao;
                     """
-                    result = db.get_engine().connect().execute(text(sql))
+                    # Pela sessão, a conexão volta ao pool ao sair do `with`
+                    result = db.session.execute(text(sql))
                     columns = result.keys()
                     # Converter os resultados para uma lista de dicionários
                     result = [dict(zip(columns, row)) for row in result.fetchall()]
