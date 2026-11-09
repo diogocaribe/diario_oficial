@@ -1,5 +1,17 @@
 """Codigos úteis ao sistema."""
 
+from datetime import date, timedelta
+
+
+def dias_do_periodo(inicio: date, fim: date, ultimo_dia: date) -> list[date]:
+    """Lista os dias de `inicio` a `fim`, inclusive, sem passar de `ultimo_dia`.
+
+    Returns:
+        Os dias em ordem crescente; lista vazia se o período não tiver nenhum dia.
+    """
+    fim = min(fim, ultimo_dia)
+    return [inicio + timedelta(days=i) for i in range((fim - inicio).days + 1)]
+
 
 def check_word_in_list(word: str, list1: list):
     """Verifica se existe uma palavra numa lista

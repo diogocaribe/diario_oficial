@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Roda o pipeline completo em um período, dia a dia, via container `app` (docker compose):
-# raspagem, doe_bruto → publicação, publicação → ato e auditoria. O padrão é de 3 meses.
+# Roda o pipeline completo em um período, via container `app` (docker compose): raspagem,
+# doe_bruto → publicação, publicação → ato e auditoria. Datas diferentes rodam em paralelo
+# e, dentro de uma data, cada etapa espera a anterior. O padrão é de 3 meses.
 # Pode ser repetido: datas já coletadas não são raspadas de novo. Termina com código 1
-# se alguma etapa falhar; basta rodar outra vez para refazer só o que faltou.
+# se alguma data falhar; basta rodar outra vez para refazer só o que faltou.
 #
 # A saída é só a dos comandos da CLI, sem filtros nem mensagens próprias do script (além
 # dos erros de uso, antes de qualquer execução).
@@ -13,6 +14,7 @@
 #   Scripts/pipeline_periodo.sh -i 01-07-2026 -m 1         # 1 mês a partir da data
 #   Scripts/pipeline_periodo.sh -i 01-07-2026 -f 15-07-2026
 #   Scripts/pipeline_periodo.sh -d 01-07-2026              # uma única data (sem -i, -f ou -m)
+#   Scripts/pipeline_periodo.sh -i 01-07-2026 -p 2         # no máximo 2 datas ao mesmo tempo
 
 set -u
 
@@ -20,6 +22,7 @@ DATA=''
 INICIO=''
 FIM=''
 MESES=''
+PROCESSOS=''
 
 erro() {
   echo "$1" >&2
@@ -52,7 +55,8 @@ while [[ $# -gt 0 ]]; do
     -i) [[ $# -ge 2 ]] || erro 'Falta a data de -i.'; INICIO="$2"; shift 2 ;;
     -f) [[ $# -ge 2 ]] || erro 'Falta a data de -f.'; FIM="$2"; shift 2 ;;
     -m) [[ $# -ge 2 ]] || erro 'Falta o número de -m.'; MESES="$2"; shift 2 ;;
-    -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+    -p) [[ $# -ge 2 ]] || erro 'Falta o número de -p.'; PROCESSOS="$2"; shift 2 ;;
+    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
     *) erro "Opção desconhecida: $1 (use -h para ajuda)" ;;
   esac
 done
@@ -65,6 +69,13 @@ fi
 
 MESES="${MESES:-3}"
 [[ "$MESES" =~ ^[1-9][0-9]*$ ]] || erro "Número de meses inválido: $MESES"
+
+# Sem -p vale o padrão da CLI
+OPCOES_CLI=()
+if [[ -n "$PROCESSOS" ]]; then
+  [[ "$PROCESSOS" =~ ^[1-9][0-9]*$ ]] || erro "Número de processos inválido: $PROCESSOS"
+  OPCOES_CLI=(--processos "$PROCESSOS")
+fi
 
 # A edição de hoje pode não ter saído: gravada como inexistente, nunca seria refeita
 ONTEM=$(date -d 'yesterday' +%F)
@@ -82,40 +93,10 @@ fi
 [[ "$FIM_ISO" > "$ONTEM" ]] && FIM_ISO="$ONTEM"
 [[ "$INICIO_ISO" > "$FIM_ISO" ]] && erro "Período vazio: $INICIO_ISO a $FIM_ISO (o limite é ontem)."
 
-DIAS=$(( ($(date -d "$FIM_ISO" +%s) - $(date -d "$INICIO_ISO" +%s)) / 86400 + 1 ))
-
 # O docker compose procura o docker-compose.yaml a partir do diretório atual
 cd "$(dirname "$0")/.." || exit 1
 
-FALHOU=false
-
-# As etapas rodam em sequência para cada data. Se uma falhar, as seguintes não rodam nessa
-# data, e o laço passa para a próxima.
-for ((I = 0; I < DIAS; I++)); do
-  D=$(date -d "$INICIO_ISO + $I days" +%d-%m-%Y)
-
-  # 1. Raspagem. A sessão do Selenium às vezes cai no meio: tenta uma segunda vez
-  if ! cli raspar-doe-bruto "$D" && ! cli raspar-doe-bruto "$D"; then
-    FALHOU=true
-    continue
-  fi
-
-  # 2. doe_bruto → publicação
-  if ! cli transformar-doe-bruto-publicacao "$D"; then
-    FALHOU=true
-    continue
-  fi
-
-  # 3. Publicação → ato: não recebe data, processa todas as pendentes
-  if ! cli transformar-publicacao-ato; then
-    FALHOU=true
-    continue
-  fi
-
-  # 4. Auditoria: grava publicacao.auditoria e imprime, para cada link do dia, os atos e se
-  # foi aprovada ou reprovada, com os achados
-  cli auditar-publicacao-ato "$D" || FALHOU=true
-done
-
-$FALHOU && exit 1
-exit 0
+# O paralelismo, as etapas de cada data e a segunda tentativa da raspagem ficam na CLI
+cli executar-pipeline-periodo \
+  "$(date -d "$INICIO_ISO" +%d-%m-%Y)" "$(date -d "$FIM_ISO" +%d-%m-%Y)" \
+  "${OPCOES_CLI[@]}"

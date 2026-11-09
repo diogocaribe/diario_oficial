@@ -38,13 +38,17 @@ class PublicacaoRepository:
                 db.session.rollback()
                 raise exception
 
-    def get_all_conteudo_link_none(self):
+    def get_all_conteudo_link_none(self, data=None):
+        """Publicações sem conteúdo coletado, de todas as datas ou só da edição de `data`."""
         with DBConnectionHandler() as db:
             try:
                 # Adicione todas as instâncias à sessão
-                resultado = (
-                    db.session.query(Publicacao).filter(Publicacao.conteudo_link.is_(None)).all()
+                consulta = db.session.query(Publicacao).filter(
+                    Publicacao.conteudo_link.is_(None)
                 )
+                if data is not None:
+                    consulta = consulta.filter(Publicacao.doe_bruto.has(dt_edicao=data))
+                resultado = consulta.all()
                 # Commit a transação
                 return resultado
             except Exception as exception:
@@ -80,11 +84,12 @@ class PublicacaoRepository:
                 db.session.rollback()
                 raise exception
 
-    def get_conteudo_link_processada_ato_null(self):
+    def get_conteudo_link_processada_ato_null(self, data=None):
+        """Publicações pendentes de ato, de todas as datas ou só da edição de `data`."""
         with DBConnectionHandler() as db:
             try:
                 # Adicione todas as instâncias à sessão
-                resultado = (
+                consulta = (
                 db.session.query(
                     Publicacao.id,
                     Publicacao.doe_bruto_id,
@@ -92,8 +97,10 @@ class PublicacaoRepository:
                     Publicacao.conteudo_link,
                 )
                 .filter(Publicacao.processada_para_ato == None)
-                .all()
                 )
+                if data is not None:
+                    consulta = consulta.filter(Publicacao.doe_bruto.has(dt_edicao=data))
+                resultado = consulta.all()
                 # Commit a transação
                 return resultado
             except Exception as exception:

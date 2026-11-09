@@ -1,5 +1,7 @@
 import typer
-from datetime import datetime
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from datetime import datetime, timedelta
+from typing import Optional
 from rich.markup import escape
 from rich.pretty import Pretty
 from rich import print
@@ -9,11 +11,15 @@ from dados import publicacao, ato, auditoria, log_erro
 
 from diario_oficial.auditoria import auditar_edicao, inicio_do_texto
 from transformacao import separar_ato, get_conteudo_texto_link
+from util import dias_do_periodo
 
 from contextlib import redirect_stdout
 from io import StringIO
 
 app = typer.Typer()
+
+# Cada data abre um navegador: o padrão é o SE_NODE_MAX_SESSIONS do docker-compose.yaml
+PROCESSOS_PIPELINE_PADRAO = 4
 
 
 @app.command()
@@ -53,15 +59,22 @@ def raspar_doe_bruto(data: str, save_db: bool = True, forcar: bool = False):
 
 
 @app.command()
-def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = True, save_db: bool = True):
+def transformar_doe_bruto_publicacao(
+    data: str,
+    transformar_publicacao: bool = True,
+    save_db: bool = True,
+    somente_data: bool = False,
+):
     """
-    Esta função pega todos os dados brutos não processados e 
+    Esta função pega todos os dados brutos não processados e
     transforma em publicação (tabela publicacao do banco de dados).
 
     Args:
         data (str): Data 'DD-MM-YYYY'
-        tranformcar_publicacao (bool, optional): Realiza a transformação dos dados brutos em 
+        tranformcar_publicacao (bool, optional): Realiza a transformação dos dados brutos em
         publicação. Defaults to False.
+        somente_data (bool, optional): Coleta o conteúdo textual só dos links da edição de
+        `data`, e não os pendentes de todas as datas. Defaults to False.
 
     Examples:
         >>> python diario_oficial/cli.py transformar-doe-bruto-publicacao '12-11-2024' --no-transformar-publicacao --no-save-db
@@ -94,7 +107,9 @@ def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = T
             doe_bruto.update_doe_bruto_para_publicacao(id_doe=registro.id)
 
     try:
-        lista_publicacao = publicacao.get_all_conteudo_link_none()
+        lista_publicacao = publicacao.get_all_conteudo_link_none(
+            data=_data_da_cli(data) if somente_data else None
+        )
 
         # Coletando o conteudo textual de cada link
         for publicacao_ in lista_publicacao:
@@ -125,12 +140,22 @@ def _registrar_erro_separacao(publicacao_, tipo, descricao, trecho=None):
 
 @app.command()
 @staticmethod
-def transformar_publicacao_ato():
+def transformar_publicacao_ato(data: Optional[str] = None):
     """
     Esta função todas as publicações e transforma em atos.
+
+    Args: \n
+        data (str, optional): Data 'DD-MM-YYYY'. Se informada, processa só as publicações
+        pendentes dessa edição. Padrão é processar as pendentes de qualquer data.
     """
-    print('Transformando em atos todas as publicações pendentes, de qualquer data.')
-    lista_publicacao = publicacao.get_conteudo_link_processada_ato_null()
+    if data is None:
+        print('Transformando em atos todas as publicações pendentes, de qualquer data.')
+        lista_publicacao = publicacao.get_conteudo_link_processada_ato_null()
+    else:
+        print(f'Transformando em atos as publicações pendentes de {data}.')
+        lista_publicacao = publicacao.get_conteudo_link_processada_ato_null(
+            data=_data_da_cli(data)
+        )
 
     # Coletando o conteudo textual de cada link
     for publicacao_ in lista_publicacao:
@@ -236,6 +261,103 @@ def auditar_publicacao_ato(data: str, save_db: bool = True):
 
     # Achado da edição não pertence a nenhum link
     _imprimir_achados(relatorio.achados_da_publicacao(None))
+
+
+def _raspar_com_nova_tentativa(data: str):
+    """A sessão do Selenium às vezes cai no meio: tenta uma segunda vez."""
+    try:
+        raspar_doe_bruto(data)
+    except Exception as e:
+        print(f'Raspagem de {data} falhou ({type(e).__name__}); tentando de novo.')
+        raspar_doe_bruto(data)
+
+
+# Na ordem de execução. As etapas ficam restritas à data, senão processos simultâneos
+# pegariam as mesmas pendências e gravariam os atos em duplicidade (processing.ato não
+# tem restrição de unicidade).
+ETAPAS_PIPELINE = {
+    'raspar-doe-bruto': _raspar_com_nova_tentativa,
+    'transformar-doe-bruto-publicacao': lambda data: transformar_doe_bruto_publicacao(
+        data, somente_data=True
+    ),
+    'transformar-publicacao-ato': lambda data: transformar_publicacao_ato(data=data),
+    'auditar-publicacao-ato': auditar_publicacao_ato,
+}
+
+
+def _executar_pipeline_data(data: str) -> tuple[str, str | None]:
+    """Executa em sequência as etapas de uma data, parando na primeira que falhar.
+
+    Roda em um processo próprio: redirect_stdout troca o sys.stdout do processo inteiro,
+    então não pode ser usado por várias threads ao mesmo tempo.
+
+    Returns:
+        (saída impressa pelas etapas, descrição do erro ou None).
+    """
+    # A saída é devolvida inteira para as datas não se misturarem no terminal
+    saida = StringIO()
+    with redirect_stdout(saida):
+        for nome, etapa in ETAPAS_PIPELINE.items():
+            try:
+                etapa(data)
+            except Exception as e:
+                return saida.getvalue(), f'{nome}: {type(e).__name__}: {e}'
+    return saida.getvalue(), None
+
+
+@app.command()
+def executar_pipeline_periodo(
+    data_inicio: str,
+    data_fim: str,
+    processos: int = typer.Option(
+        PROCESSOS_PIPELINE_PADRAO,
+        min=1,
+        help='Datas processadas ao mesmo tempo. Acima de SE_NODE_MAX_SESSIONS, as '
+        'sessões excedentes ficam na fila do Selenium.',
+    ),
+):
+    """
+    Executa o pipeline de cada data do período: raspagem, transformação em publicação,
+    transformação em ato e auditoria. Datas diferentes rodam em paralelo; dentro de uma
+    data, cada etapa termina antes de a seguinte começar. Se uma etapa falhar, as
+    seguintes não rodam nessa data e as demais datas continuam. Termina com código 1 se
+    alguma data falhar; basta rodar outra vez para refazer o que faltou.
+
+    Args: \n
+        data_inicio (str): Primeira data do período, 'DD-MM-YYYY'. \n
+        data_fim (str): Última data do período, inclusive, 'DD-MM-YYYY'. O limite é ontem.
+
+    Examples: \n
+        >>> python diario_oficial/cli.py executar-pipeline-periodo 01-07-2026 31-07-2026 \n
+        >>> python diario_oficial/cli.py executar-pipeline-periodo 01-07-2026 31-07-2026 --processos 2
+    """
+    # A edição de hoje pode não ter saído: gravada como inexistente, nunca seria refeita
+    ontem = datetime.now().date() - timedelta(days=1)
+    dias = dias_do_periodo(_data_da_cli(data_inicio), _data_da_cli(data_fim), ontem)
+    if not dias:
+        raise typer.BadParameter(
+            f'Período vazio: {data_inicio} a {data_fim} (o limite é ontem).'
+        )
+    datas = [dia.strftime('%d-%m-%Y') for dia in dias]
+
+    falhas = 0
+    with ProcessPoolExecutor(max_workers=min(processos, len(datas))) as executor:
+        futuros = {executor.submit(_executar_pipeline_data, d): d for d in datas}
+        for futuro in as_completed(futuros):
+            data = futuros[futuro]
+            try:
+                saida, erro = futuro.result()
+            except Exception as e:  # o processo morreu, sem devolver a saída
+                saida, erro = '', f'{type(e).__name__}: {e}'
+            # A saída já foi formatada pelo rich e pode ter colchetes: vai sem marcação
+            typer.echo(saida, nl=False)
+            if erro is not None:
+                falhas += 1
+                typer.echo(f'Data {data} falhou em {erro}', err=True)
+
+    print(f'{len(datas) - falhas} de {len(datas)} datas sem falha.')
+    if falhas:
+        raise typer.Exit(code=1)
 
 
 if __name__ == '__main__':
