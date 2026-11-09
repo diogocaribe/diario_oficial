@@ -45,6 +45,9 @@ else
   OPCOES_RUN=(-T -e "COLUMNS=${COLUMNS:-180}")
 fi
 
+# Se a CLI for morta à força, não deixa a rolagem presa abaixo da barra nem o cursor oculto
+[[ -t 1 ]] && trap "printf '\0337\033[r\033[?25h\0338'" EXIT
+
 cli() {
   docker compose --progress quiet run --rm "${OPCOES_RUN[@]}" app "$@"
 }

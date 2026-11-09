@@ -1,10 +1,22 @@
+import sys
 import typer
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from datetime import datetime, timedelta
+from multiprocessing import Value
 from typing import Optional
 from rich.markup import escape
 from rich.pretty import Pretty
-from rich import print
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
+from rich.text import Text
+from rich import print, reconfigure
+from barra_topo import BarraFixaNoTopo
 from raspar_doe import raspar_diario_oficial, doe_bruto
 from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
 from dados import publicacao, ato, auditoria, log_erro
@@ -40,11 +52,11 @@ def raspar_doe_bruto(data: str, save_db: bool = True, forcar: bool = False):
     data_str = data
     data = datetime.strptime(data_str, '%d-%m-%Y')
     if not forcar and doe_bruto.check_if_date_doe_coleted(data.date()) is not None:
-        print(f'Data {data_str} já coletada. Nada a raspar '
-              '(use --forcar para raspar novamente).')
+        print(f'[yellow]Data {data_str} já coletada. Nada a raspar '
+              '(use --forcar para raspar novamente).[/yellow]')
         return
 
-    print(f'Raspando os dados do Diário Oficial Bahia de {data_str}')
+    print(f'[cyan]Raspando os dados do Diário Oficial Bahia de {data_str}[/cyan]')
     with redirect_stdout(StringIO()):
         resultado = raspar_diario_oficial(data)  # Os prints serão suprimidos
         # Exibe apenas o retorno final, sem os prints internos da função
@@ -55,7 +67,7 @@ def raspar_doe_bruto(data: str, save_db: bool = True, forcar: bool = False):
             # TODO como tratar a existência de uma data já coletada
             dados.save_data(**resultado)
         except Exception as e:
-            print(f'Erro: {e}')
+            print(f'[red]Erro: {escape(str(e))}[/red]')
 
 
 @app.command()
@@ -80,7 +92,7 @@ def transformar_doe_bruto_publicacao(
         >>> python diario_oficial/cli.py transformar-doe-bruto-publicacao '12-11-2024' --no-transformar-publicacao --no-save-db
         >>> python diario_oficial/cli.py transformar-doe-bruto-publicacao '12-11-2024' --transformar-publicacao --save-db
     """
-    print('Transformando dados brutos em publicações.')
+    print('[cyan]Transformando dados brutos em publicações.[/cyan]')
     if transformar_publicacao:
         data_iso = f"{data[-4:]}-{data[3:5]}-{data[:2]}"
         registro = doe_bruto.check_if_date_doe_coleted(
@@ -93,10 +105,10 @@ def transformar_doe_bruto_publicacao(
 
         dados = doe_bruto.explodir_doe_bruto_json(data=data_iso)
         if not registro.existe:
-            print(f'Não há edição do DOE em {data}. Nada a transformar.')
+            print(f'[yellow]Não há edição do DOE em {data}. Nada a transformar.[/yellow]')
         elif not dados:
-            print(f'Edição de {data} sem publicações das pastas selecionadas. '
-                  'Nada a transformar.')
+            print(f'[yellow]Edição de {data} sem publicações das pastas selecionadas. '
+                  'Nada a transformar.[/yellow]')
         else:
             print(dados)
             if save_db:
@@ -118,7 +130,8 @@ def transformar_doe_bruto_publicacao(
             # Gravando o conteudo textual no banco
             publicacao.update_conteudo_link(id_publicacao=publicacao_.id, conteudo_link=texto)
     except TypeError:
-        print('Não existe links de publicações para coletar conteudo textual.')
+        print('[yellow]Não existe links de publicações para coletar conteudo textual.'
+              '[/yellow]')
 
 
 def _registrar_erro_separacao(publicacao_, tipo, descricao, trecho=None):
@@ -135,7 +148,8 @@ def _registrar_erro_separacao(publicacao_, tipo, descricao, trecho=None):
     try:
         log_erro.registrar([linha])
     except Exception as e:
-        print(f'Erro ao gravar log da publicação {publicacao_.id}: {escape(str(e))}')
+        print(f'[red]Erro ao gravar log da publicação {publicacao_.id}: '
+              f'{escape(str(e))}[/red]')
 
 
 @app.command()
@@ -149,10 +163,11 @@ def transformar_publicacao_ato(data: Optional[str] = None):
         pendentes dessa edição. Padrão é processar as pendentes de qualquer data.
     """
     if data is None:
-        print('Transformando em atos todas as publicações pendentes, de qualquer data.')
+        print('[cyan]Transformando em atos todas as publicações pendentes, '
+              'de qualquer data.[/cyan]')
         lista_publicacao = publicacao.get_conteudo_link_processada_ato_null()
     else:
-        print(f'Transformando em atos as publicações pendentes de {data}.')
+        print(f'[cyan]Transformando em atos as publicações pendentes de {data}.[/cyan]')
         lista_publicacao = publicacao.get_conteudo_link_processada_ato_null(
             data=_data_da_cli(data)
         )
@@ -167,8 +182,8 @@ def transformar_publicacao_ato(data: Optional[str] = None):
             atos = separar_ato(texto)
             if not atos:
                 # Não é falha ao salvar: o texto existe, mas o regex não reconhece o título
-                print(f'Publicação {publicacao_.id} sem ato reconhecido pelo regex; '
-                      f'continua pendente: {publicacao_.link}')
+                print(f'[yellow]Publicação {publicacao_.id} sem ato reconhecido pelo regex; '
+                      f'continua pendente: {escape(publicacao_.link)}[/yellow]')
                 _registrar_erro_separacao(
                     publicacao_,
                     'SEM_ATO_RECONHECIDO',
@@ -181,12 +196,13 @@ def transformar_publicacao_ato(data: Optional[str] = None):
                     objeto_ato = {'publicacao_id': publicacao_.id, 'conteudo_ato': ato_}
                     ato.save_data(objeto_ato)
         except Exception as e:
-            print(f'Erro ao salvar atos da publicação {publicacao_.id}: {escape(str(e))}')
+            print(f'[red]Erro ao salvar atos da publicação {publicacao_.id}: '
+                  f'{escape(str(e))}[/red]')
             _registrar_erro_separacao(
                 publicacao_, 'ERRO_NA_SEPARACAO', f'{type(e).__name__}: {e}'
             )
         else:
-            print(f'Salvando ato da publicacao: {publicacao_.id}')
+            print(f'[green]Salvando ato da publicacao: {publicacao_.id}[/green]')
             publicacao.update_processada_para_ato(id_publicacao=publicacao_.id)
 
 
@@ -201,7 +217,7 @@ def _imprimir_achados(achados):
     """Imprime o motivo de cada reprovação, com o trecho que localiza o problema."""
     for achado in achados:
         local = f' | Ato {achado.ato_id}' if achado.ato_id is not None else ''
-        print(f'{achado.regra}{local}: {achado.descricao}')
+        print(f'[yellow]{achado.regra}{local}[/yellow]: {achado.descricao}')
         if achado.trecho:
             print(f'    {escape(achado.trecho)}')
 
@@ -210,7 +226,8 @@ def _imprimir_auditoria_link(publicacao_, relatorio):
     """Imprime a auditoria de um link: os atos separados, o resultado e os achados."""
     # O texto do DOE pode ter colchetes, que o rich leria como marcação
     print(
-        f"\nPublicação {publicacao_.id} | {escape(publicacao_.nome_ato)}\n"
+        f"\n[bold cyan]Publicação {publicacao_.id} | "
+        f"{escape(publicacao_.nome_ato)}[/bold cyan]\n"
         f"{publicacao_.link}\n{'=' * 80}"
     )
     for ato_ in publicacao_.atos:
@@ -245,7 +262,7 @@ def auditar_publicacao_ato(data: str, save_db: bool = True):
     edicao = auditoria.get_edicao(_data_da_cli(data))
 
     if edicao is None:
-        print(f'Nenhuma edição coletada em {data}.')
+        print(f'[yellow]Nenhuma edição coletada em {data}.[/yellow]')
         return
 
     relatorio = auditar_edicao(edicao)
@@ -254,7 +271,7 @@ def auditar_publicacao_ato(data: str, save_db: bool = True):
         auditoria.salvar_relatorio(relatorio)
 
     if not edicao.publicacoes:
-        print(f'Edição de {data} sem publicações.')
+        print(f'[yellow]Edição de {data} sem publicações.[/yellow]')
 
     for publicacao_ in edicao.publicacoes:
         _imprimir_auditoria_link(publicacao_, relatorio)
@@ -268,7 +285,8 @@ def _raspar_com_nova_tentativa(data: str):
     try:
         raspar_doe_bruto(data)
     except Exception as e:
-        print(f'Raspagem de {data} falhou ({type(e).__name__}); tentando de novo.')
+        print(f'[yellow]Raspagem de {data} falhou ({type(e).__name__}); '
+              'tentando de novo.[/yellow]')
         raspar_doe_bruto(data)
 
 
@@ -285,6 +303,26 @@ ETAPAS_PIPELINE = {
 }
 
 
+# Etapas concluídas por todos os processos, lido pelo processo principal para a barra
+_etapas_concluidas = None
+
+
+def _inicializar_processo_pipeline(etapas_concluidas):
+    """Prepara um processo do pipeline.
+
+    A saída das etapas vai para um StringIO, que o rich trataria como arquivo, sem cores:
+    as cores são geradas sempre e o processo principal as remove se não houver terminal.
+    """
+    global _etapas_concluidas
+    _etapas_concluidas = etapas_concluidas
+    reconfigure(force_terminal=True)
+
+
+def _contar_etapas(quantidade: int):
+    with _etapas_concluidas.get_lock():
+        _etapas_concluidas.value += quantidade
+
+
 def _executar_pipeline_data(data: str) -> tuple[str, str | None]:
     """Executa em sequência as etapas de uma data, parando na primeira que falhar.
 
@@ -296,12 +334,16 @@ def _executar_pipeline_data(data: str) -> tuple[str, str | None]:
     """
     # A saída é devolvida inteira para as datas não se misturarem no terminal
     saida = StringIO()
+    total_etapas = len(ETAPAS_PIPELINE)
     with redirect_stdout(saida):
-        for nome, etapa in ETAPAS_PIPELINE.items():
+        for numero, (nome, etapa) in enumerate(ETAPAS_PIPELINE.items(), start=1):
             try:
                 etapa(data)
             except Exception as e:
+                # As etapas que não vão rodar também saem da conta da barra
+                _contar_etapas(total_etapas - numero + 1)
                 return saida.getvalue(), f'{nome}: {type(e).__name__}: {e}'
+            _contar_etapas(1)
     return saida.getvalue(), None
 
 
@@ -341,21 +383,60 @@ def executar_pipeline_periodo(
     datas = [dia.strftime('%d-%m-%Y') for dia in dias]
 
     falhas = 0
-    with ProcessPoolExecutor(max_workers=min(processos, len(datas))) as executor:
+    etapas_concluidas = Value('i', 0)
+    with ProcessPoolExecutor(
+        max_workers=min(processos, len(datas)),
+        initializer=_inicializar_processo_pipeline,
+        initargs=(etapas_concluidas,),
+    ) as executor:
         futuros = {executor.submit(_executar_pipeline_data, d): d for d in datas}
-        for futuro in as_completed(futuros):
-            data = futuros[futuro]
-            try:
-                saida, erro = futuro.result()
-            except Exception as e:  # o processo morreu, sem devolver a saída
-                saida, erro = '', f'{type(e).__name__}: {e}'
-            # A saída já foi formatada pelo rich e pode ter colchetes: vai sem marcação
-            typer.echo(saida, nl=False)
-            if erro is not None:
-                falhas += 1
-                typer.echo(f'Data {data} falhou em {erro}', err=True)
+        pendentes = set(futuros)
+        progresso = Progress(
+            BarColumn(),
+            TaskProgressColumn(),
+            TextColumn('{task.fields[resumo]}'),
+            TimeElapsedColumn(),
+            TextColumn('restam'),
+            TimeRemainingColumn(),
+            # O padrão de 30 s deixaria a estimativa vazia: uma etapa leva minutos
+            speed_estimate_period=3600,
+        )
+        tarefa = progresso.add_task(
+            'pipeline',
+            total=len(datas) * len(ETAPAS_PIPELINE),
+            resumo=f'0/{len(datas)} datas',
+        )
+        with BarraFixaNoTopo(progresso) as barra:
+            while pendentes:
+                concluidos, pendentes = wait(
+                    pendentes, timeout=0.5, return_when=FIRST_COMPLETED
+                )
+                for futuro in concluidos:
+                    data = futuros[futuro]
+                    try:
+                        saida, erro = futuro.result()
+                    except Exception as e:  # o processo morreu, sem devolver a saída
+                        saida, erro = '', f'{type(e).__name__}: {e}'
+                    # Já formatada pelo rich e pode ter colchetes: vai sem marcação
+                    if saida:
+                        barra.imprimir(Text.from_ansi(saida))
+                    if erro is not None:
+                        falhas += 1
+                        mensagem = f'[bold red]Data {data} falhou em {escape(erro)}[/]'
+                        if barra.ativa:
+                            barra.imprimir(Text.from_markup(mensagem))
+                        else:
+                            print(mensagem, file=sys.stderr)
+                resumo = f'{len(datas) - len(pendentes)}/{len(datas)} datas'
+                if falhas:
+                    resumo += f' [red]({falhas} com falha)[/red]'
+                progresso.update(
+                    tarefa, completed=etapas_concluidas.value, resumo=resumo
+                )
+                barra.atualizar()
 
-    print(f'{len(datas) - falhas} de {len(datas)} datas sem falha.')
+    cor = 'red' if falhas else 'green'
+    print(f'[bold {cor}]{len(datas) - falhas} de {len(datas)} datas sem falha.[/]')
     if falhas:
         raise typer.Exit(code=1)
 
