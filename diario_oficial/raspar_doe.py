@@ -15,6 +15,7 @@ import datetime
 import time
 
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -29,6 +30,11 @@ site_link = 'https://dool.egba.ba.gov.br/'
 URL_CONTEUDO_PUBLICACAO = (
     'https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/'
 )
+
+# O site às vezes devolve a página inicial sem o botão da versão html. Esperar mais não
+# adianta, porque a página não muda sozinha: é preciso carregá-la de novo.
+TENTATIVAS_CARREGAR_PAGINA = 3
+SEGUNDOS_ESPERA_BOTAO_HTML = 20
 
 # Lista de pastas que serão abertas para coleta de dados
 # Nível 1
@@ -143,6 +149,28 @@ def _confirmar_modal_html(navegador, wdw):
     ).click()
 
 
+def _carregar_botao_html(navegador):
+    """Carrega a página inicial até o botão da versão html ficar clicável.
+
+    Returns:
+        O elemento do botão.
+
+    Raises:
+        TimeoutException: Se o botão não aparecer em nenhuma das tentativas.
+    """
+    espera = WebDriverWait(
+        navegador, timeout=SEGUNDOS_ESPERA_BOTAO_HTML, poll_frequency=0.5
+    )
+    for tentativa in range(1, TENTATIVAS_CARREGAR_PAGINA + 1):
+        navegador.get(site_link)
+        try:
+            return espera.until(EC.element_to_be_clickable((By.ID, 'downloadHTML')))
+        except TimeoutException:
+            if tentativa == TENTATIVAS_CARREGAR_PAGINA:
+                raise
+            print(f'Botão html não apareceu (tentativa {tentativa}); recarregando')
+
+
 def _abrir_edicao(navegador, wdw, data_: str):
     """Abre o sumário html da edição da data informada.
 
@@ -152,10 +180,8 @@ def _abrir_edicao(navegador, wdw, data_: str):
     Returns:
         (número da edição, url) ou None quando a edição não existe.
     """
-    navegador.get(site_link)
-
     # Clicar no botão da versão html do diário oficial (espera a página carregar)
-    wdw.until(EC.element_to_be_clickable((By.ID, 'downloadHTML'))).click()
+    _carregar_botao_html(navegador).click()
     _confirmar_modal_html(navegador, wdw)
 
     # Selecionando a data
