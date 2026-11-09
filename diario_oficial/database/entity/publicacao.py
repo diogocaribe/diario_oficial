@@ -13,7 +13,9 @@ class Publicacao(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     doe_bruto_id: Mapped[int] = mapped_column(
-        ForeignKey('processing.doe_bruto.id', ondelete='CASCADE'), nullable=False
+        ForeignKey('processing.doe_bruto.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
     )
     poder_id: Mapped[int] = mapped_column(ForeignKey('dominio.poder.id'), nullable=False)
     adm_direta_id: Mapped[int] = mapped_column(ForeignKey('dominio.adm_direta.id'), nullable=True)

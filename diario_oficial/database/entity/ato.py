@@ -16,7 +16,9 @@ class Ato(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     publicacao_id: Mapped[int] = mapped_column(
-        ForeignKey('processing.publicacao.id', ondelete='CASCADE'), nullable=False
+        ForeignKey('processing.publicacao.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
     )
     conteudo_ato: Mapped[str] = mapped_column(nullable=True)
 
