@@ -32,6 +32,8 @@ URL_CONTEUDO_PUBLICACAO = f'{URL_SITE}/apifront/portal/edicoes/publicacoes_ver_c
 # muda sozinha: é preciso carregá-la de novo.
 TENTATIVAS_CARREGAR_PAGINA = 3
 SEGUNDOS_ESPERA_SUMARIO = 20
+# Sem limite, uma página que nunca termina de carregar prende a sessão do Selenium
+SEGUNDOS_CARREGAR_PAGINA = 60
 # Abrir ou fechar uma pasta leva cerca de 0,2 s
 SEGUNDOS_ESPERA_ANIMACAO = 10
 
@@ -161,8 +163,8 @@ def _abrir_sumario(navegador, url: str):
         navegador, timeout=SEGUNDOS_ESPERA_SUMARIO, poll_frequency=0.1
     )
     for tentativa in range(1, TENTATIVAS_CARREGAR_PAGINA + 1):
-        navegador.get(url)
         try:
+            navegador.get(url)
             # A janela de acesso sem cadastro cobre a página e intercepta os cliques
             espera.until(
                 EC.element_to_be_clickable(
@@ -317,6 +319,7 @@ def raspar_diario_oficial(data: datetime.date) -> dict:
     opcoes.accept_insecure_certs = True
     navegador = webdriver.Remote(endereco_selenium, options=opcoes)
     try:
+        navegador.set_page_load_timeout(SEGUNDOS_CARREGAR_PAGINA)
         _abrir_sumario(navegador, edicao.url)
 
         # NIVEL 1 (Poder)
