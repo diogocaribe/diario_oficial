@@ -31,7 +31,7 @@ from io import StringIO
 app = typer.Typer()
 
 # Cada data abre um navegador: o padrão é o SE_NODE_MAX_SESSIONS do docker-compose.yaml
-PROCESSOS_PIPELINE_PADRAO = 4
+PROCESSOS_PIPELINE_PADRAO = 8
 
 
 @app.command()
