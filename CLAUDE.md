@@ -54,8 +54,10 @@ DOE (site) ──Selenium──▶ processing.doe_bruto (doe_json JSONB, uma lin
   (`a70574a135a5`, `9e09149daa8d`...). **O nome da pasta no DOE precisa existir exatamente
   igual em `dominio.*.nome`**, senão a FK fica NULL na explosão.
 - View `vw_publicacao` no schema `public` (sem prefixo), criada em `e5c2ecd42738` e recriada
-  em `3dabb7927524`. **`vw_ato` não existe**: em `e5c2ecd42738` o segundo `op.execute` é um
-  `SELECT` sem `CREATE VIEW` (só o `downgrade` tenta removê-la).
+  em `3dabb7927524`.
+- View `vw_ato` no schema `public`, criada em `bcd56ebfe8e3`: atos das publicações com
+  `auditoria IS TRUE`, com os dados da publicação, do DOE e dos domínios. O critério é o
+  resultado das regras de auditoria, não uma conferência humana.
 - Trigger `after_delete_delete_atos_da_mesma_pubalicacao`: apagar **um** ato apaga todos os
   atos da mesma publicação e volta `publicacao.processada_para_ato` para NULL. É a forma de
   reprocessar uma publicação.
