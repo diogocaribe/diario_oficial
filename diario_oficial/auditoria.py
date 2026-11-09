@@ -25,7 +25,8 @@ Regras, por nível, com a função que as aplica:
 Fluxo: AuditoriaRepository.get_edicao monta a Edicao do dia, auditar_edicao devolve um
 RelatorioDia e a CLI (auditar-publicacao-ato) imprime, para cada link (publicação), os
 atos e se a auditoria foi aprovada ou reprovada, com os achados, e grava
-RelatorioDia.resultado_publicacoes em publicacao.auditoria.
+RelatorioDia.resultado_publicacoes em publicacao.auditoria e os achados em
+processing.log_erro (ver linhas_de_log).
 
 As regras são heurísticas: um achado é um indício para conferir, não uma prova, e a
 coluna publicacao.auditoria é saída deste código, não uma verificação humana. Para
@@ -124,12 +125,14 @@ class Edicao:
         existe: False quando não há edição do DOE nessa data
         doe_bruto_para_publicacao: True depois da transformação em publicações
         publicacoes: publicações da edição
+        id: id da edição em processing.doe_bruto
     """
 
     data: date
     existe: bool
     doe_bruto_para_publicacao: bool | None
     publicacoes: list[Publicacao] = field(default_factory=list)
+    id: int | None = None
 
 
 @dataclass
@@ -371,3 +374,26 @@ def auditar_edicao(edicao: Edicao) -> RelatorioDia:
     for publicacao in edicao.publicacoes:
         achados += auditar_publicacao(publicacao)
     return RelatorioDia(edicao, achados)
+
+
+def linhas_de_log(relatorio: RelatorioDia) -> list[dict]:
+    """Converte os achados do relatório em linhas de processing.log_erro.
+
+    Args:
+        relatorio (RelatorioDia): resultado da auditoria de uma edição
+
+    Returns:
+        list[dict]: uma linha por achado, com as colunas da tabela
+    """
+    return [
+        {
+            'etapa': 'auditoria',
+            'tipo': achado.regra,
+            'descricao': achado.descricao,
+            'trecho': achado.trecho or None,
+            'doe_bruto_id': relatorio.edicao.id,
+            'publicacao_id': achado.publicacao_id,
+            'ato_id': achado.ato_id,
+        }
+        for achado in relatorio.achados
+    ]

@@ -85,7 +85,12 @@ class PublicacaoRepository:
             try:
                 # Adicione todas as instâncias à sessão
                 resultado = (
-                db.session.query(Publicacao.id, Publicacao.link, Publicacao.conteudo_link)
+                db.session.query(
+                    Publicacao.id,
+                    Publicacao.doe_bruto_id,
+                    Publicacao.link,
+                    Publicacao.conteudo_link,
+                )
                 .filter(Publicacao.processada_para_ato == None)
                 .all()
                 )

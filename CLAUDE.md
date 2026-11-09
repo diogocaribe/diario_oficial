@@ -65,6 +65,12 @@ DOE (site) ──Selenium──▶ processing.doe_bruto (doe_json JSONB, uma lin
   `diario_oficial/auditoria.py`): `true` se todos os atos da publicação foram separados
   corretamente, `false` caso contrário, `NULL` se não foi auditada. Reprocessar uma publicação
   não limpa a coluna: rode a auditoria de novo depois.
+- `processing.log_erro` guarda os erros de `transformar-publicacao-ato` (`etapa =
+  'separacao'`) e os achados de `auditar-publicacao-ato` (`etapa = 'auditoria'`). É histórico:
+  cada ocorrência é gravada uma vez (`etapa`, `tipo`, `descricao`, `trecho`, `doe_bruto_id` e
+  `publicacao_id` iguais não geram linha nova), e `criado_em` é a primeira detecção. As
+  FKs para `doe_bruto` e `publicacao` são `RESTRICT` (esses dados não devem ser apagados); a
+  de `ato` é `SET NULL`, para o log sobreviver ao reprocessamento.
 - Entidades em `diario_oficial/database/entity/`, repositórios em
   `diario_oficial/database/repository/`, conexão em `database/configs/connection.py`
   (`DBConnectionHandler`, context manager que abre/fecha a sessão).

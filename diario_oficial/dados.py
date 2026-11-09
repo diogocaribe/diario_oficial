@@ -2,6 +2,7 @@ from database.repository.doe_bruto_repository import DiarioOficialBrutoRepositor
 from diario_oficial.database.repository.publicacao_repository import PublicacaoRepository
 from diario_oficial.database.repository.ato_repository import AtoRepository
 from diario_oficial.database.repository.auditoria_repository import AuditoriaRepository
+from diario_oficial.database.repository.log_erro_repository import LogErroRepository
 
 doe_bruto = DiarioOficialBrutoRepository()
 
@@ -10,3 +11,5 @@ publicacao = PublicacaoRepository()
 ato = AtoRepository()
 
 auditoria = AuditoriaRepository()
+
+log_erro = LogErroRepository()

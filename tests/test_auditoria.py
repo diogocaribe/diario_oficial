@@ -7,7 +7,14 @@ from datetime import date
 
 import pytest
 
-from diario_oficial.auditoria import Edicao, Publicacao, auditar_edicao
+from diario_oficial.auditoria import (
+    Achado,
+    Edicao,
+    Publicacao,
+    RelatorioDia,
+    auditar_edicao,
+    linhas_de_log,
+)
 from tests.apoio import (
     DANILO,
     MARCIA,
@@ -196,6 +203,42 @@ def test_achados_separados_por_publicacao_e_edicao():
     assert [a.regra for a in relatorio.achados_da_publicacao(None)] == [
         'EDICAO_NAO_TRANSFORMADA'
     ]
+
+
+def test_linhas_de_log_de_ato_e_de_publicacao():
+    edicao = Edicao(date(2026, 10, 6), True, True, id=7)
+    achados = [
+        Achado('ATO_CORTADO', 'descrição do ato', 2, 30, 'fim do ato'),
+        Achado('SEM_ATOS', 'descrição da publicação', 3),
+    ]
+    assert linhas_de_log(RelatorioDia(edicao, achados)) == [
+        {
+            'etapa': 'auditoria',
+            'tipo': 'ATO_CORTADO',
+            'descricao': 'descrição do ato',
+            'trecho': 'fim do ato',
+            'doe_bruto_id': 7,
+            'publicacao_id': 2,
+            'ato_id': 30,
+        },
+        {
+            'etapa': 'auditoria',
+            'tipo': 'SEM_ATOS',
+            'descricao': 'descrição da publicação',
+            'trecho': None,
+            'doe_bruto_id': 7,
+            'publicacao_id': 3,
+            'ato_id': None,
+        },
+    ]
+
+
+def test_linhas_de_log_de_achado_da_edicao():
+    edicao = Edicao(date(2026, 10, 11), True, None, id=7)
+    [linha] = linhas_de_log(auditar_edicao(edicao))
+    assert linha['tipo'] == 'EDICAO_NAO_TRANSFORMADA'
+    assert linha['doe_bruto_id'] == 7
+    assert linha['publicacao_id'] is None
 
 
 def test_edicao_nao_transformada():

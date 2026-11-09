@@ -2,34 +2,48 @@ from datetime import date
 
 from sqlalchemy import text
 
-from diario_oficial.auditoria import Ato, Edicao, Publicacao
+from diario_oficial.auditoria import (
+    Ato,
+    Edicao,
+    Publicacao,
+    RelatorioDia,
+    linhas_de_log,
+)
 
 from ..configs.connection import DBConnectionHandler
+from .log_erro_repository import INSERIR_LOG_ERRO
 
 
 class AuditoriaRepository:
     """Consultas e gravação do resultado da auditoria da separação em atos."""
 
-    def update_auditoria(self, resultados: dict[int, bool]) -> None:
-        """Grava publicacao.auditoria de uma só vez: ou todas as publicações, ou nenhuma.
+    def salvar_relatorio(self, relatorio: RelatorioDia) -> None:
+        """Grava publicacao.auditoria e os achados no log, na mesma transação.
+
+        Cada lado é testado à parte: uma edição sem publicações ainda pode ter achado.
 
         Args:
-            resultados (dict[int, bool]): id da publicação e resultado da auditoria
+            relatorio (RelatorioDia): resultado da auditoria de uma edição
         """
-        if not resultados:
+        resultados = relatorio.resultado_publicacoes
+        linhas = linhas_de_log(relatorio)
+        if not resultados and not linhas:
             return
         with DBConnectionHandler() as db:
             try:
-                db.session.execute(
-                    text(
-                        'UPDATE processing.publicacao SET auditoria = :auditoria '
-                        'WHERE id = :id'
-                    ),
-                    [
-                        {'id': id_publicacao, 'auditoria': resultado}
-                        for id_publicacao, resultado in resultados.items()
-                    ],
-                )
+                if resultados:
+                    db.session.execute(
+                        text(
+                            'UPDATE processing.publicacao SET auditoria = :auditoria '
+                            'WHERE id = :id'
+                        ),
+                        [
+                            {'id': id_publicacao, 'auditoria': resultado}
+                            for id_publicacao, resultado in resultados.items()
+                        ],
+                    )
+                if linhas:
+                    db.session.execute(INSERIR_LOG_ERRO, linhas)
                 db.session.commit()
             except Exception as exception:
                 db.session.rollback()
@@ -73,6 +87,7 @@ class AuditoriaRepository:
             linha_edicao.dt_edicao,
             linha_edicao.existe,
             linha_edicao.doe_bruto_para_publicacao,
+            id=linha_edicao.id,
         )
         publicacoes = {}
         for linha in linhas_publicacao:

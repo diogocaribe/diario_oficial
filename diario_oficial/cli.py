@@ -5,9 +5,9 @@ from rich.pretty import Pretty
 from rich import print
 from raspar_doe import raspar_diario_oficial, doe_bruto
 from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
-from dados import publicacao, ato, auditoria
+from dados import publicacao, ato, auditoria, log_erro
 
-from diario_oficial.auditoria import auditar_edicao
+from diario_oficial.auditoria import auditar_edicao, inicio_do_texto
 from transformacao import separar_ato, get_conteudo_texto_link
 
 from contextlib import redirect_stdout
@@ -106,6 +106,23 @@ def transformar_doe_bruto_publicacao(data: str, transformar_publicacao: bool = T
         print('Não existe links de publicações para coletar conteudo textual.')
 
 
+def _registrar_erro_separacao(publicacao_, tipo, descricao, trecho=None):
+    """Grava o erro em log_erro; uma falha no log não interrompe as demais publicações."""
+    linha = {
+        'etapa': 'separacao',
+        'tipo': tipo,
+        'descricao': descricao,
+        'trecho': trecho,
+        'doe_bruto_id': publicacao_.doe_bruto_id,
+        'publicacao_id': publicacao_.id,
+        'ato_id': None,
+    }
+    try:
+        log_erro.registrar([linha])
+    except Exception as e:
+        print(f'Erro ao gravar log da publicação {publicacao_.id}: {escape(str(e))}')
+
+
 @app.command()
 @staticmethod
 def transformar_publicacao_ato():
@@ -127,6 +144,12 @@ def transformar_publicacao_ato():
                 # Não é falha ao salvar: o texto existe, mas o regex não reconhece o título
                 print(f'Publicação {publicacao_.id} sem ato reconhecido pelo regex; '
                       f'continua pendente: {publicacao_.link}')
+                _registrar_erro_separacao(
+                    publicacao_,
+                    'SEM_ATO_RECONHECIDO',
+                    'O regex não reconheceu nenhum ato no texto da publicação.',
+                    inicio_do_texto(texto) or None,
+                )
                 continue
             for ato_ in atos:
                 if ato_ != '':
@@ -134,6 +157,9 @@ def transformar_publicacao_ato():
                     ato.save_data(objeto_ato)
         except Exception as e:
             print(f'Erro ao salvar atos da publicação {publicacao_.id}: {escape(str(e))}')
+            _registrar_erro_separacao(
+                publicacao_, 'ERRO_NA_SEPARACAO', f'{type(e).__name__}: {e}'
+            )
         else:
             print(f'Salvando ato da publicacao: {publicacao_.id}')
             publicacao.update_processada_para_ato(id_publicacao=publicacao_.id)
@@ -179,8 +205,9 @@ def auditar_publicacao_ato(data: str, save_db: bool = True):
     Para cada link, imprime os atos separados, informa se a auditoria foi aprovada ou
     reprovada, com os achados que levaram à reprovação, e grava o resultado em
     publicacao.auditoria: True se todos os atos do link foram separados corretamente,
-    False caso contrário. Só reprova diante de evidência de separação errada: texto fora
-    dos atos, ato sem título, ato cortado ou dois atos juntos.
+    False caso contrário. Os achados novos são gravados em processing.log_erro. Só reprova
+    diante de evidência de separação errada: texto fora dos atos, ato sem título, ato
+    cortado ou dois atos juntos.
 
     Args: \n
         data (str): Data 'DD-MM-YYYY'. \n
@@ -199,7 +226,7 @@ def auditar_publicacao_ato(data: str, save_db: bool = True):
     relatorio = auditar_edicao(edicao)
 
     if save_db:
-        auditoria.update_auditoria(relatorio.resultado_publicacoes)
+        auditoria.salvar_relatorio(relatorio)
 
     if not edicao.publicacoes:
         print(f'Edição de {data} sem publicações.')
