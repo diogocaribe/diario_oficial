@@ -12,7 +12,6 @@ guardando o nome da pasta-pai atual de cada nível.
 """
 
 import datetime
-import time
 
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
@@ -22,19 +21,19 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 import util as u
 from dados import doe_bruto  # noqa: F401 (reexportado para cli.py)
+from diario_oficial.edicao import URL_SITE, buscar_edicao
 from diario_oficial.settings import Settings
 
 # Primeiro data do diário oficial 05/01/2016??
 
-site_link = 'https://dool.egba.ba.gov.br/'
-URL_CONTEUDO_PUBLICACAO = (
-    'https://dool.egba.ba.gov.br/apifront/portal/edicoes/publicacoes_ver_conteudo/'
-)
+URL_CONTEUDO_PUBLICACAO = f'{URL_SITE}/apifront/portal/edicoes/publicacoes_ver_conteudo/'
 
-# O site às vezes devolve a página inicial sem o botão da versão html. Esperar mais não
-# adianta, porque a página não muda sozinha: é preciso carregá-la de novo.
+# O site às vezes devolve a página incompleta. Esperar mais não adianta, porque ela não
+# muda sozinha: é preciso carregá-la de novo.
 TENTATIVAS_CARREGAR_PAGINA = 3
-SEGUNDOS_ESPERA_BOTAO_HTML = 20
+SEGUNDOS_ESPERA_SUMARIO = 20
+# Abrir ou fechar uma pasta leva cerca de 0,2 s
+SEGUNDOS_ESPERA_ANIMACAO = 10
 
 # Lista de pastas que serão abertas para coleta de dados
 # Nível 1
@@ -92,6 +91,17 @@ def _listar_pastas(navegador) -> list:
     ]
 
 
+def _esperar_animacao(navegador):
+    """Espera a árvore terminar de abrir ou fechar a pasta clicada.
+
+    Durante a animação os itens da pasta ainda estão cortados, e o Selenium devolve
+    texto vazio para eles.
+    """
+    WebDriverWait(
+        navegador, timeout=SEGUNDOS_ESPERA_ANIMACAO, poll_frequency=0.05
+    ).until(lambda d: d.execute_script("return jQuery(':animated').length === 0"))
+
+
 def abrir_pastas(navegador, pastas):
     """Clica (abre) as pastas visíveis cujo nome está em `pastas`.
 
@@ -101,16 +111,16 @@ def abrir_pastas(navegador, pastas):
     for texto, el in _listar_pastas(navegador):
         if texto in pastas:
             try:
-                time.sleep(0.5)
                 el.click()
+                _esperar_animacao(navegador)
             except Exception as e:
                 print(e)
 
 
 def coletar_lista_link_ato(navegador, pasta) -> list[dict]:
     """Abre uma pasta de atos, lista os atos (links que começam com '#') e a fecha."""
-    time.sleep(0.5)
     pasta.click()
+    _esperar_animacao(navegador)
     lista_ato = []
     for link in navegador.find_elements(By.TAG_NAME, 'a'):
         texto = link.text
@@ -123,8 +133,8 @@ def coletar_lista_link_ato(navegador, pasta) -> list[dict]:
                     'link': f'{URL_CONTEUDO_PUBLICACAO}{identificador}',
                 }
             )
-    time.sleep(0.5)
     pasta.click()
+    _esperar_animacao(navegador)
     return lista_ato
 
 
@@ -141,80 +151,34 @@ def _adicionar(pai: dict, chave: str, filho: str, valor):
         pai[chave].update({filho: valor})
 
 
-def _confirmar_modal_html(navegador, wdw):
-    """Espera a janela de continuar na versão html e clica no botão dela."""
-    wdw.until(EC.presence_of_element_located((By.CLASS_NAME, 'modal-footer')))
-    navegador.find_element(By.CLASS_NAME, 'modal-footer').find_element(
-        By.TAG_NAME, 'button'
-    ).click()
-
-
-def _carregar_botao_html(navegador):
-    """Carrega a página inicial até o botão da versão html ficar clicável.
-
-    Returns:
-        O elemento do botão.
+def _abrir_sumario(navegador, url: str):
+    """Abre o sumário html da edição e espera a árvore de pastas ficar pronta.
 
     Raises:
-        TimeoutException: Se o botão não aparecer em nenhuma das tentativas.
+        TimeoutException: Se a árvore não ficar pronta em nenhuma das tentativas.
     """
     espera = WebDriverWait(
-        navegador, timeout=SEGUNDOS_ESPERA_BOTAO_HTML, poll_frequency=0.5
+        navegador, timeout=SEGUNDOS_ESPERA_SUMARIO, poll_frequency=0.1
     )
     for tentativa in range(1, TENTATIVAS_CARREGAR_PAGINA + 1):
-        navegador.get(site_link)
+        navegador.get(url)
         try:
-            return espera.until(EC.element_to_be_clickable((By.ID, 'downloadHTML')))
+            # A janela de acesso sem cadastro cobre a página e intercepta os cliques
+            espera.until(
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, '#modal-acessolivre .modal-footer button')
+                )
+            ).click()
+            espera.until(EC.invisibility_of_element_located((By.ID, 'modal-acessolivre')))
+            # O sumário é carregado à parte; a árvore só responde depois de montada
+            espera.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, '#tree .hitarea'))
+            )
+            return
         except TimeoutException:
             if tentativa == TENTATIVAS_CARREGAR_PAGINA:
                 raise
-            print(f'Botão html não apareceu (tentativa {tentativa}); recarregando')
-
-
-def _abrir_edicao(navegador, wdw, data_: str):
-    """Abre o sumário html da edição da data informada.
-
-    Args:
-        data_: Data no formato 'DD-MM-YYYY'.
-
-    Returns:
-        (número da edição, url) ou None quando a edição não existe.
-    """
-    # Clicar no botão da versão html do diário oficial (espera a página carregar)
-    _carregar_botao_html(navegador).click()
-    _confirmar_modal_html(navegador, wdw)
-
-    # Selecionando a data
-    print('Clear date input')
-    navegador.find_element(By.CLASS_NAME, 'date-input').clear()
-    time.sleep(0.5)
-    navegador.switch_to.alert.accept()
-    print('Send date input')
-    navegador.find_element(By.CLASS_NAME, 'date-input').send_keys(data_)
-    print('Click date input')
-    navegador.find_element(By.CLASS_NAME, 'date-input').click()
-    print('Click search button')
-    navegador.find_element(By.CLASS_NAME, 'fa-search').click()
-
-    try:
-        time.sleep(2)
-        alert = wdw.until(lambda d: d.switch_to.alert)
-        if alert.text == 'Edição não existente!':
-            alert.accept()
-            time.sleep(1)
-            print(f'Edição não existe: {data_}')
-            return None
-    except Exception:
-        print(f'Edição existente: {data_}')
-
-    _confirmar_modal_html(navegador, wdw)
-
-    edicao = int(
-        navegador.find_element(By.CLASS_NAME, 'text-center')
-        .find_element(By.TAG_NAME, 'strong')
-        .text.split()[-1]
-    )
-    return edicao, navegador.current_url
+            print(f'Sumário não carregou (tentativa {tentativa}); recarregando')
 
 
 def _montar_nivel_2(pastas, lista_pasta_nivel_2) -> dict:
@@ -338,19 +302,22 @@ def raspar_diario_oficial(data: datetime.date) -> dict:
         dict com 'doe_json', 'nro_edicao', 'dt_edicao', 'existe' e 'url', ou
         {'dt_edicao': data, 'existe': False} quando não há edição na data.
     """
-    data_ = data.strftime('%d-%m-%Y')
     print(f'Raspando o Diario oficial de: {data}')
+    edicao = buscar_edicao(data)
+    if edicao is None:
+        print(f'Edição não existe: {data:%d-%m-%Y}')
+        return {'dt_edicao': data, 'existe': False}
+
     settings = Settings()
     endereco_selenium = f'{settings.SELENIUM_ADDRESS}:{settings.SELENIUM_PORT}'
     print(endereco_selenium)
-    navegador = webdriver.Remote(endereco_selenium, options=webdriver.ChromeOptions())
+    opcoes = webdriver.ChromeOptions()
+    # Sem isso o Chrome para, em parte das sessões, na tela de aviso sobre o certificado do
+    # site. A coleta do conteúdo dos links também não o valida.
+    opcoes.accept_insecure_certs = True
+    navegador = webdriver.Remote(endereco_selenium, options=opcoes)
     try:
-        wdw = WebDriverWait(navegador, timeout=60, poll_frequency=0.5)
-
-        edicao_aberta = _abrir_edicao(navegador, wdw, data_)
-        if edicao_aberta is None:
-            return {'dt_edicao': data, 'existe': False}
-        edicao, url = edicao_aberta
+        _abrir_sumario(navegador, edicao.url)
 
         # NIVEL 1 (Poder)
         lista_pasta_nivel_1 = [texto for texto, _ in _listar_pastas(navegador)]
@@ -391,10 +358,10 @@ def raspar_diario_oficial(data: datetime.date) -> dict:
 
     return {
         'doe_json': arvore,
-        'nro_edicao': edicao,
+        'nro_edicao': edicao.nro_edicao,
         'dt_edicao': data,
         'existe': True,
-        'url': url,
+        'url': edicao.url,
     }
 
 
