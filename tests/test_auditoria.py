@@ -260,3 +260,48 @@ def test_texto_fora_dos_atos_alem_do_preambulo_e_detectado():
     texto = portaria()
     conteudo = f'{PREAMBULO_RESOLVE} COMUNICADO O INEMA informa. {texto}'
     assert regras(publicacao([texto], conteudo=conteudo)) == ['TEXTO_FORA_DOS_ATOS']
+
+
+def test_edital_que_termina_em_site_nao_esta_cortado():
+    texto = 'EDITAL DE INTIMAÇÃO COM PRAZO DE 05 DIAS. Site: www.inema.ba.gov.br'
+    assert regras(publicacao([texto])) == []
+
+
+def test_portaria_conjunta_com_muitos_orgaos_tem_titulo():
+    orgaos = 'SEMA/INEMA/CMG/SSP/CBMBA/PCBA/PMBA/SUDEC/SESAB/BAHIATER/IBAMA'
+    assert regras(publicacao([ato(f'PORTARIA CONJUNTA {orgaos} N° 01 DE 2024', MARCIA)])) == []
+
+
+@pytest.mark.parametrize(
+    'titulo',
+    ['EDITAL DE NOTIFICAÇÃO', 'RESOLUÇÃO Nº 056/2024', 'EDITAL 001/2024', 'RESUMO'],
+)
+def test_ato_so_com_o_titulo_e_reprovado(titulo):
+    assert 'ATO_SO_TITULO' in regras(publicacao([titulo]))
+
+
+@pytest.mark.parametrize(
+    'titulo',
+    [
+        'LICENÇA MÉDICA DEFERIDA PELA JUNTA MÉDICA',
+        'APOSTILA Nº 01/2020',
+        'RECOMENDAÇÃO CEPRAM Nº 02 DE 2021',
+        'PRORROGAÇÃO DO CRONOGRAMA PARA ELEIÇÃO',
+    ],
+)
+def test_titulo_novo_depois_de_assinatura_indica_atos_juntos(titulo):
+    texto = f'{ato("PORTARIA Nº 35.468 DE 05 DE OUTUBRO DE 2026.", MARCIA)} {titulo} corpo'
+    assert 'ATOS_JUNTOS' in regras(publicacao([texto]))
+
+
+@pytest.mark.parametrize(
+    'sobra',
+    [
+        'GOVERNO DO ESTADO DA BAHIA SECRETARIA DO MEIO AMBIENTE',
+        'A DIRETORA GERAL, EM EXERCÍCIO, DO INSTITUTO, RESOLVE:',
+        'O SECRETÁRIO DO MEIO AMBIENTE - SEMA, no uso de suas atribuições, RESOLVE:',
+    ],
+)
+def test_sobra_esperada_nao_e_texto_fora_dos_atos(sobra):
+    portaria = ato('PORTARIA Nº 35.468 DE 05 DE OUTUBRO DE 2026.', MARCIA)
+    assert regras(publicacao([portaria], conteudo=f'{sobra}\n{portaria}')) == []

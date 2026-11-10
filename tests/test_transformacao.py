@@ -4,9 +4,11 @@ Caminho real: o texto passa por separar_ato e o resultado passa pela auditoria. 
 separação certa tem que ser produzida por separar_ato e aprovada pela auditoria.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
-from diario_oficial.transformacao import separar_ato
+from diario_oficial.transformacao import get_conteudo_texto_link, separar_ato
 from tests.apoio import (
     DANILO,
     MARCIA,
@@ -110,6 +112,130 @@ def test_cabecalho_autorizacao_nao_vira_ato_separado():
     aviso = ato('AVISO DE CONSULTA PÚBLICA A SECRETÁRIA torna público', DANILO)
     texto = f'AUTORIZAÇÃO SECRETARÍA DO MEIO AMBIENTE DO ESTADO DA BAHIA {aviso}'
     assert separar_ato(texto) == [aviso]
+
+
+@pytest.mark.parametrize(
+    'titulo',
+    [
+        'LICENÇA MÉDICA DEFERIDA PELA JUNTA MÉDICA OFICIAL DO ESTADO',
+        'LICENÇA MÊDICA DEFERIDA PELA JUNTA MÉDICA OFICIAL DO ESTADO',
+        'Extrato do Termo de Cessão de Uso de Bens Móveis Nº 001/2015',
+        'Resumo do Segundo Termo Aditivo ao Acordo de Cooperação Técnica n° 010/2015.',
+        'APOSTILA Nº 011/2015',
+        'TERMO DE CESSÃO DE USO Nº 001/2016',
+        'TERMO DE DECISÃO DE INSTAURAÇÃO DE PROCESSO ADMINISTRATIVO',
+        'PRIMEIRO TERMO ADITIVO AO TERMO DE COMPROMISSO Nº 008/2012',
+        'Portaria nº 078 de 01 de outubro de 2024',
+        'RECOMENDAÇÃO CONERH Nº 01 DE 14 DE SETEMBRO DE 2017',
+        'POTARIA Nº 59 DE 11 DE AGOSTO DE 2015',
+        'PORTARIA SEMA/ FERFA N.º 060 DE 22 DE AGOSTO DE 2025',
+        'ECRONOGRAMA PROCESSO ELEITORAL APA DUNAS',
+        'A Comissão Eleitoral, constituída por meio da Portaria nº 46',
+        'LISTA PRÉVIA DE HABILITADOS AO PROCESSO DE RENOVAÇÃO',
+    ],
+)
+def test_titulo_novo_que_abre_a_publicacao_vira_ato(titulo):
+    texto = ato(titulo, MARCIA)
+    assert separar_e_auditar(texto) == [texto]
+
+
+def test_titulo_colado_em_resolve_abre_ato():
+    primeiro = ato('PORTARIA Nº 33.418/2025', MARCIA)
+    texto = f'{PREAMBULO_RESOLVE.strip()}{primeiro}'
+    assert separar_e_auditar(texto) == [primeiro]
+
+
+@pytest.mark.parametrize(
+    'preambulo',
+    [
+        'A DIRETORA GERAL EM EXERCÍCIO DO INSTITUTO DO MEIO AMBIENTE - INEMA, RESOLVE:',
+        'A DIRETORA GERAL, EM EXERCÍCIO, DO INSTITUTO DO MEIO AMBIENTE, RESOLVE:',
+        'O DIRETOR GERAL, EM EXERCÍCIO, DO INSTITUTO DO MEIO AMBIENTE, RESOLVE:',
+        'O SECRETÁRIO DO MEIO AMBIENTE - SEMA, no uso de suas atribuições, RESOLVE:',
+    ],
+)
+def test_preambulo_entre_portarias_fica_fora_dos_atos(preambulo):
+    primeiro = ato('PORTARIA Nº 35.468 DE 05 DE OUTUBRO DE 2026.', DANILO)
+    segundo = ato('PORTARIA Nº 35.469 DE 05 DE OUTUBRO DE 2026.', DANILO)
+    assert separar_e_auditar(f'{primeiro}\r\n{preambulo}\n{segundo}') == [primeiro, segundo]
+
+
+@pytest.mark.parametrize('rotulo', ['Onde se lê:', 'ONDE SE LÊ:', 'Leia-se:', 'LEIA-SE:'])
+def test_portaria_citada_em_errata_nao_inicia_ato(rotulo):
+    texto = (
+        f'ERRATA DA PORTARIA publicada no D.O.E de 10.10.2026 {rotulo}\n'
+        f'PORTARIA Nº 22.293 de 2026. {MARCIA}'
+    )
+    assert separar_ato(texto) == [texto]
+
+
+def test_valor_de_finalidade_nao_inicia_ato():
+    texto = (
+        'PORTARIA Nº 35.468/2026 - Averbar tempo de serviço. Finalidade:\n'
+        f'ADICIONAL POR TEMPO DE SERVIÇO {MARCIA}'
+    )
+    assert separar_ato(texto) == [texto]
+
+
+def test_termo_depois_de_artigo_nao_inicia_ato():
+    texto = (
+        'PORTARIA Nº 31.440 DE 24 DE JULHO DE 2024. RESOLVE: Art. 1º -\n'
+        f'TORNA SEM EFEITO a Portaria INEMA nº 31.438. {MARCIA}'
+    )
+    assert separar_ato(texto) == [texto]
+
+
+@pytest.mark.parametrize(
+    'tabela', ['PORTARIA SAEB Avant Serviços', 'PORTARIA D.O.E. PÁG. ONDE SE LÊ']
+)
+def test_portaria_sem_numero_nao_inicia_ato(tabela):
+    texto = f'NOTIFICAÇÃO ADMINISTRATIVA EMPRESA CNPJ PROCESSO\n{tabela} {MARCIA}'
+    assert separar_ato(texto) == [texto]
+
+
+@pytest.mark.parametrize(
+    ('titulo', 'completo'),
+    [
+        ('RESOLUÇÃO Nº 056/2024', 'RESOLUÇÃO FERFA Nº 56 DE 13 DE SETEMBRO DE 2024'),
+        ('RESOLUÇÃO N.º 060/2024', 'RESOLUÇÃO FERFA Nº 60 DE 13 DE SETEMBRO DE 2024'),
+        ('EDITAL DE NOTIFICAÇÃO', 'ERRATA do EDITAL DE NOTIFICAÇÃO, publicado no D.O.E'),
+        ('EDITAL 001/2024', 'EDITAL DE CONVOCAÇÃO A DIRETORA GERAL DO INSTITUTO'),
+        ('EDITAL Nº 001/2024 -', 'CONVOCAÇÃO PARA CONTRATAÇÃO TEMPORÁRIA'),
+    ],
+)
+def test_titulo_sem_corpo_abre_o_mesmo_ato(titulo, completo):
+    texto = f'{titulo}\n{ato(completo, MARCIA)}'
+    assert separar_ato(texto) == [texto]
+
+
+def _resposta(conteudo, tipo='text/html; charset=UTF-8', status=200):
+    resposta = MagicMock(status_code=status, content=conteudo, headers={'Content-Type': tipo})
+    resposta.__enter__.return_value = resposta
+    return resposta
+
+
+def test_link_pdf_nao_e_coletado():
+    with patch('diario_oficial.transformacao.requests.get') as get:
+        get.return_value = _resposta(b'', tipo='application/pdf')
+        assert get_conteudo_texto_link('http://doe/1') is None
+
+
+def test_conteudo_em_pdf_sem_cabecalho_nao_e_coletado():
+    with patch('diario_oficial.transformacao.requests.get') as get:
+        get.return_value = _resposta(b'%PDF-1.5 binario')
+        assert get_conteudo_texto_link('http://doe/1') is None
+
+
+def test_link_html_devolve_o_texto():
+    with patch('diario_oficial.transformacao.requests.get') as get:
+        get.return_value = _resposta('<p>PORTARIA Nº 1</p>'.encode())
+        assert get_conteudo_texto_link('http://doe/1') == 'PORTARIA Nº 1'
+
+
+def test_falha_na_coleta_devolve_texto_vazio():
+    with patch('diario_oficial.transformacao.requests.get') as get:
+        get.return_value = _resposta(b'', status=500)
+        assert get_conteudo_texto_link('http://doe/1') == ''
 
 
 def test_citacao_de_portaria_nao_inicia_ato():

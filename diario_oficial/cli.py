@@ -127,6 +127,10 @@ def transformar_doe_bruto_publicacao(
         for publicacao_ in lista_publicacao:
             # Coletando o conteudo texual do link
             texto = get_conteudo_texto_link(publicacao_.link)
+            if texto is None:
+                # PDF não entra no pipeline
+                publicacao.apagar_publicacao_pdf(id_publicacao=publicacao_.id)
+                continue
             # Gravando o conteudo textual no banco
             publicacao.update_conteudo_link(id_publicacao=publicacao_.id, conteudo_link=texto)
     except TypeError:

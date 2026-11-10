@@ -15,10 +15,12 @@ Regras, por nível, com a função que as aplica:
         PROCESSAMENTO_PARCIAL    com atos, mas não marcada como processada
     Cobertura do texto (auditar_cobertura)
         TEXTO_FORA_DOS_ATOS      trecho da publicação que não está em nenhum ato, exceto
-                                 o preâmbulo da Diretora Geral, removido de propósito
+                                 os preâmbulos de portaria e o cabeçalho do órgão,
+                                 deixados de fora de propósito
         ATO_FORA_DO_TEXTO        ato que não aparece, nesta ordem, na publicação
     Ato (auditar_ato)
         INICIO_SEM_TITULO        não começa com um título de ato
+        ATO_SO_TITULO            contém só o título, e o corpo ficou em outro ato
         ATO_CORTADO              termina no meio de uma frase, sem assinatura
         ATOS_JUNTOS              outro ato começa depois de uma assinatura
 
@@ -45,16 +47,23 @@ TAMANHO_TRECHO = 80
 # Tudo que separar_ato aceita como início. PORTARIA sem número é citação no corpo do ato.
 INICIO_DE_ATO = re.compile(
     r'^(?:\(?\*\)?\s*)?'
-    r'(?:P?ORTARIA\b.{0,30}?\bN[.ºo°]|EDITAL|EXTRATO|RETIFICAÇÃO|ERRATA|RESUMO|AVISO'
+    r'(?:(?:P?ORTARIA|POTARIA)(?:\b[^\d,;:]{0,250}?\bN[.ºo°]|\s+\d)|PORTARIAS\s+DO\s+DIRETOR'
+    r'|EDITAL|EDITAIS|EXTRATO|RETIFICAÇÃO|ERRATA|RESUMO|AVISO'
     r'|AUTORIZAÇÃO|RESOLUÇÃO|CONVOCAÇÃO|INSTRUÇÃO\s+NORMATIVA|TORNA\s+SEM\s+EFEITO'
     r'|DECISÃO|MOÇÃO|COMUNICADO|RECOMENDAÇÃO|DELIBERAÇÃO|NOTIFICAÇÃO\s+ADMINISTRATIVA'
-    r'|(?:\d+ª\s+)?PRORROGAÇÃO\s+DO\s+CRONOGRAMA|CRONOGRAMA\s+PROCESSO\s+ELEITORAL'
-    r'|LICENÇA\s+TRATAMENTO\s+DE\s+SAÚDE|RESULTADO\s+FINAL\s+DO\s+CHAMAMENTO'
-    r'|ACORDO\s+DE\s+COOPERAÇÃO'
-    r'|TERMO\s+DE\s+(?:APOSTILAMENTO|COMPROMISSO|INSTAURAÇÃO|ADESÃO)'
+    r'|(?:\d+ª\s+)?PRORROGAÇÃO|E?CRONOGRAMA\s+PROCESSO\s+ELEITORAL'
+    r'|LICENÇA\s+(?:TRATAMENTO\s+DE\s+SAÚDE|M[ÉÊE]DICA)|RESULTADO\s+FINAL\s+DO\s+CHAMAMENTO'
+    r'|ACORDO\s+DE\s+COOPERAÇÃO|APOSTILA\s+N|NA\s+PORTARIA\s+N|TORNAR\s+SEM\s+EFEITO'
+    r'|TERMO\s+DE\s+(?:APOSTILAMENTO|COMPROMISSO|INSTAURAÇÃO|ADESÃO|CESSÃO|DECISÃO)'
+    r'|(?:[\wº°]+\s+)?TERMO\s+ADITIVO|INTIMAÇÃO|PROTOCOLO\s+DE\s+INTENÇÕES|NOTA\s+DE\s+ALERTA'
+    r'|LISTA\s+(?:PRÉVIA|FINAL)\s+DE\s+HABILITADOS|CONCESSÃO\s+AUXÍLIO|ALTERAÇÃO\s+DO\s+NOME'
+    r'|(?:SALVADOR,\s+\d{1,2}\s+DE\s+\w+\s+DE\s+\d{4}\.?\s+)?'
+    r'(?:A\s+COMISSÃO\s+ELEITORAL|AS\s+COMISSÕES\s+ELEITORAIS|OS\s+COMITÊS\s+DE\s+BACIAS'
+    r'|O\s+INSTITUTO\s.{0,80}?INFORMA\s+SOBRE\s+A\s+ALTERA)'
+    r'|A\s+DIRETORA\s+GERAL\s+DO\s+INSTITUTO.{0,200}?RESOLVE:\s+RETIFICAR'
     r'|SECRETÁRIO\b|O\s+SECRETÁRIO\b|A\s+SECRET[AÁ]RIA\s+DO\s+MEIO\s+AMBIENTE'
     r'|SECRETARIA\s+DO\s+MEIO\s+AMBIENTE\s*-\s*RESULTADO\s+DE\s+JULGAMENTO'
-    r'|CONSELHO\s+ESTADUAL\s+DO\s+MEIO\s+AMBIENTE\s*-\s*CEPRAM\.\s+ERRATA'
+    r'|CONSELHO\s+ESTADUAL\s+DO\s+MEIO\s+AMBIENTE\s*-\s*CEPRAM\.?\s+ERRATA'
     r'|O\s+DIRETOR\s+GERAL\b|ADICIONAL\s+POR\s+TEMPO\s+DE\s+SERVIÇO)',
     re.IGNORECASE,
 )
@@ -76,16 +85,39 @@ OUTRO_ATO = re.compile(
     r'(?:P?ORTARIA\s+N|EDITAL|EXTRATO|RETIFICAÇÃO|ERRATA|RESUMO|AVISO|RESOLUÇÃO'
     r'|CONVOCAÇÃO|INSTRUÇÃO\s+NORMATIVA|COMUNICADO|DECISÃO|TERMO\s+DE|TORNA\s+SEM'
     r'|O\s+(?:DIRETOR|SECRETÁRIO|INSTITUTO)|A\s+DIRETORA'
+    r'|RECOMENDAÇÃO\s+(?:[A-Z]+\s+)?N|APOSTILA\s+N|LICENÇA\s+M[ÉÊE]DICA'
+    r'|(?:\d+ª\s+)?PRORROGAÇÃO\s+DO\s+CRONOGRAMA|AUTORIZAÇÃO\s+A\s+SECRET'
+    r'|CONSELHO\s+ESTADUAL\s+DO\s+MEIO\s+AMBIENTE\s*-\s*CEPRAM\.?\s+ERRATA'
     r'|ADICIONAL\s+POR\s+TEMPO\s+DE\s+SERVIÇO)',
     re.IGNORECASE,
 )
 
-# Termina em palavra minúscula ou pontuação aberta: 'Todos nomeados pela'
-FIM_INTERROMPIDO = re.compile(r'(?:\b[a-zà-ÿ]+|[,;:(–—-])$')
+# Termina em palavra minúscula ou pontuação aberta: 'Todos nomeados pela'. Endereço de
+# site ou e-mail ('www.inema.ba.gov.br') é fim legítimo de edital.
+FIM_INTERROMPIDO = re.compile(r'(?:(?<![./@])\b[a-zà-ÿ]+|[,;:(–—-])$')
 
-# Sobra que separar_ato deixa fora dos atos de propósito (texto já normalizado)
-PREAMBULO_DA_DIRETORA = re.compile(
-    r'A DIRETORA GERAL DO INSTITUTO.{0,300}?(?:DECIDE|RESOLVE) ?:?'
+# Sobras que separar_ato deixa fora dos atos de propósito (texto já normalizado)
+PREAMBULO_DE_PORTARIA = re.compile(
+    r'(?:A DIRETORA GERAL(?:,? EM EXERCÍCIO,?)? DO INSTITUTO'
+    r'|A Diretora Geral do INSTITUTO'
+    r'|O SECRETÁRIO D[EO] MEIO AMBIENTE'
+    r'|O DIRETOR GERAL,? (?:EM EXERC\w+,?|SUBSTITUTO) DO INSTITUTO)'
+    r'.{0,1200}?(?i:DECIDE|RESOLVE) ?:?'
+)
+# Nome do órgão no topo da publicação, em maiúsculas: não é título nem corpo de ato
+CABECALHO_DE_ORGAO = re.compile(
+    r'(?:GOVERNO DO ESTADO|CONSELHO ESTADUAL|COMITÊ ESTADUAL|INSTITUTO DO MEIO AMBIENTE'
+    r'|SECRETARIA DO MEIO AMBIENTE)[^a-zà-ÿ]{0,130}'
+)
+
+# Ato que é só o título: o corpo ficou em outro ato
+SO_TITULO = re.compile(
+    r'EDITAL DE (?:NOTIFICAÇÃO|CONVOCAÇÃO)(?: PROCESSO SELETIVO SIMPLIFICADO)?'
+    r'|EDITAL (?:Nº )?[\d/]+ ?-?'
+    r'|EDITAL DE \d{1,2} DE \w+ DE \d{4}'
+    r'|RESOLUÇÃO(?: [A-Z]+)? N[.º°]+ ?[\d/ ]+'
+    r'|RESUMO'
+    r'|AVISO DE PRORROGAÇÃO DE PRAZOS E ALTERAÇÃO DE CRONOGRAMA'
 )
 
 
@@ -212,8 +244,8 @@ def inicio_do_texto(texto: str | None) -> str:
 def auditar_ato(ato: Ato, publicacao_id: int) -> list[Achado]:
     """Procura evidência de que o ato foi cortado, é fragmento ou contém outro ato.
 
-    Aplica as regras INICIO_SEM_TITULO, ATO_CORTADO e ATOS_JUNTOS. Olha só o texto do
-    próprio ato; a comparação com o texto da publicação fica em auditar_cobertura.
+    Aplica as regras INICIO_SEM_TITULO, ATO_SO_TITULO, ATO_CORTADO e ATOS_JUNTOS. Olha
+    só o texto do próprio ato; a comparação com o texto da publicação fica em auditar_cobertura.
 
     Args:
         ato (Ato): ato a auditar
@@ -232,6 +264,13 @@ def auditar_ato(ato: Ato, publicacao_id: int) -> list[Achado]:
         achado(
             'INICIO_SEM_TITULO',
             'O ato não começa com um título: pode ser parte de outro ato.',
+            texto[:TAMANHO_TRECHO],
+        )
+
+    if SO_TITULO.fullmatch(texto):
+        achado(
+            'ATO_SO_TITULO',
+            'O ato contém só o título: o corpo ficou em outro ato.',
             texto[:TAMANHO_TRECHO],
         )
 
@@ -277,7 +316,7 @@ def auditar_cobertura(publicacao: Publicacao) -> list[Achado]:
     cursor = 0
 
     def texto_fora(trecho):
-        if PREAMBULO_DA_DIRETORA.fullmatch(trecho):
+        if PREAMBULO_DE_PORTARIA.fullmatch(trecho) or CABECALHO_DE_ORGAO.fullmatch(trecho):
             return
         achados.append(
             Achado(

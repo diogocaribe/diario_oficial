@@ -2,6 +2,7 @@ from .doe_bruto_repository import DiarioOficialBrutoRepository
 from ..configs.connection import DBConnectionHandler
 from ..entity.publicacao import Publicacao
 
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from psycopg import errors
 
@@ -60,6 +61,32 @@ class PublicacaoRepository:
                 objeto = db.session.query(Publicacao).filter(Publicacao.id == id_publicacao).one()
                 objeto.conteudo_link = conteudo_link
                 # Commit a transação
+                db.session.commit()
+            except Exception as exception:
+                db.session.rollback()
+                raise exception
+
+    def apagar_publicacao_pdf(self, id_publicacao: int):
+        """Apaga do banco a publicação cujo link é um PDF, que fica fora do pipeline.
+
+        Os atos e o log vão antes: a FK de log_erro para publicacao é RESTRICT.
+
+        Args:
+            id_publicacao (int): id da tabela publicacao
+        """
+        parametros = {'id': id_publicacao}
+        with DBConnectionHandler() as db:
+            try:
+                db.session.execute(
+                    text('DELETE FROM processing.ato WHERE publicacao_id = :id'), parametros
+                )
+                db.session.execute(
+                    text('DELETE FROM processing.log_erro WHERE publicacao_id = :id'),
+                    parametros,
+                )
+                db.session.execute(
+                    text('DELETE FROM processing.publicacao WHERE id = :id'), parametros
+                )
                 db.session.commit()
             except Exception as exception:
                 db.session.rollback()

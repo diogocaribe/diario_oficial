@@ -138,6 +138,9 @@ importado**, com `data_inicio`/`data_fim` fixos no código. Não importe esse m�
   `dados.py` instancia os repositórios no import.
 - O SQL de `explodir_doe_bruto_json` monta a data com f-string. A data vem da CLI; para
   qualquer entrada nova, use parâmetros bind (`text(...).bindparams`).
+- Links de PDF ficam fora do pipeline: `get_conteudo_texto_link` os identifica pelo
+  `Content-Type` e devolve `None`, e a coleta apaga a publicação do banco
+  (`apagar_publicacao_pdf`).
 - `get_conteudo_texto_link` usa `verify=False` (certificado do site) e devolve `""` em caso de
   erro, então uma string vazia em `conteudo_link` significa falha na coleta, não "sem
   conteúdo". Como a coleta só pega `conteudo_link IS NULL`, essas falhas **nunca são
@@ -149,9 +152,12 @@ importado**, com `data_inicio`/`data_fim` fixos no código. Não importe esse m�
   várias palavras use `\s+`. A ordem das alternativas importa (`PORTARIA` e `RESUMO` sozinhos
   aparecem antes das variantes mais longas e as escondem). Termos colados ao texto anterior
   ou depois de uma palavra de `PALAVRAS_DE_CITACAO` ("nomeados pela PORTARIA Nº ...") são
-  citações e não iniciam ato. O preâmbulo `A DIRETORA GERAL DO INSTITUTO ... DECIDE/RESOLVE:`
-  antes de `PORTARIA Nº` fica fora dos atos, e a auditoria o aceita em `TEXTO_FORA_DOS_ATOS`;
-  já o `O DIRETOR GERAL ...` continua abrindo o ato seguinte.
+  citações e não iniciam ato, assim como termos depois de `Onde se lê:`, `Leia-se:`,
+  `Finalidade:` ou `Art. 1º -`. Título que só vale na abertura da publicação vai em
+  `TITULOS_DE_ABERTURA`. Os preâmbulos antes de `PORTARIA` (`A DIRETORA GERAL`, inclusive em
+  exercício, `O SECRETÁRIO`, `O DIRETOR GERAL, EM EXERCÍCIO`) ficam fora dos atos, e a
+  auditoria os aceita em `TEXTO_FORA_DOS_ATOS`; já o `O DIRETOR GERAL DO INSTITUTO ...`
+  continua abrindo o ato seguinte.
 - `raspar-doe-bruto` envolve a raspagem em `redirect_stdout(StringIO())`: os `print` de
   `raspar_doe` somem. Para depurar, chame `raspar_diario_oficial` direto ou remova o redirect.
 - `SELENIUM_ADDRESS` precisa incluir o esquema (`http://...`); a URL é montada como
