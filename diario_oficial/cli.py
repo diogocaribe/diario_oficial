@@ -172,6 +172,52 @@ def transformar_publicacao_ato(data: Optional[str] = None):
             data=_data_da_cli(data)
         )
 
+    _separar_em_atos(lista_publicacao)
+
+
+@app.command()
+def reprocessar_publicacoes_reprovadas(save_db: bool = True):
+    """
+    Refaz, de uma vez, a separação em atos de todas as publicações com
+    publicacao.auditoria = False, de qualquer data, e audita de novo as edições delas.
+    Os atos atuais dessas publicações são apagados antes. Publicações sem texto ficam de
+    fora, porque não há o que separar. Não rode junto com o pipeline: as duas execuções
+    gravariam os mesmos atos em duplicidade.
+
+    Args: \n
+        save_db (bool, optional): Com --no-save-db, só lista o que seria reprocessado,
+        sem alterar o banco. Padrão é True.
+
+    Examples: \n
+        >>> python diario_oficial/cli.py reprocessar-publicacoes-reprovadas --no-save-db \n
+        >>> python diario_oficial/cli.py reprocessar-publicacoes-reprovadas
+    """
+    reprovadas = auditoria.get_publicacoes_reprovadas()
+    if not reprovadas:
+        print('[yellow]Nenhuma publicação reprovada para reprocessar.[/yellow]')
+        return
+
+    print(f'[cyan]{len(reprovadas)} publicações reprovadas para reprocessar.[/cyan]')
+    if not save_db:
+        for reprovada in reprovadas:
+            print(f'{reprovada.id} | {reprovada.dt_edicao:%d-%m-%Y} | '
+                  f'{escape(reprovada.link)}')
+        return
+
+    auditoria.voltar_para_separacao([reprovada.id for reprovada in reprovadas])
+    _separar_em_atos(reprovadas)
+
+    # O reprocessamento não limpa publicacao.auditoria: só uma nova auditoria a atualiza
+    for dia_edicao in sorted({reprovada.dt_edicao for reprovada in reprovadas}):
+        auditoria.salvar_relatorio(auditar_edicao(auditoria.get_edicao(dia_edicao)))
+
+    restantes = len(auditoria.get_publicacoes_reprovadas())
+    print(f'[bold cyan]{len(reprovadas)} publicações reprocessadas; '
+          f'{restantes} continuam reprovadas.[/bold cyan]')
+
+
+def _separar_em_atos(lista_publicacao):
+    """Separa cada publicação em atos, grava os atos e registra os erros em log_erro."""
     # Coletando o conteudo textual de cada link
     for publicacao_ in lista_publicacao:
         # Coletando o conteudo texual do link

@@ -49,6 +49,48 @@ class AuditoriaRepository:
                 db.session.rollback()
                 raise exception
 
+    def get_publicacoes_reprovadas(self):
+        """Publicações com texto e auditoria reprovada, de todas as datas."""
+        with DBConnectionHandler() as db:
+            return db.session.execute(
+                text("""
+                    SELECT p.id, p.doe_bruto_id, p.link, p.conteudo_link, d.dt_edicao
+                    FROM processing.publicacao p
+                    JOIN processing.doe_bruto d ON d.id = p.doe_bruto_id
+                    WHERE p.auditoria IS FALSE
+                      AND COALESCE(p.conteudo_link, '') <> ''
+                    ORDER BY d.dt_edicao, p.id
+                """)
+            ).all()
+
+    def voltar_para_separacao(self, ids_publicacao: list[int]) -> None:
+        """Apaga os atos das publicações e as devolve à fila de separação.
+
+        O UPDATE cobre a publicação sem atos, na qual o trigger de processing.ato não
+        dispara.
+
+        Args:
+            ids_publicacao (list[int]): ids das publicações a reprocessar
+        """
+        parametros = {'ids': ids_publicacao}
+        with DBConnectionHandler() as db:
+            try:
+                db.session.execute(
+                    text('DELETE FROM processing.ato WHERE publicacao_id = ANY(:ids)'),
+                    parametros,
+                )
+                db.session.execute(
+                    text(
+                        'UPDATE processing.publicacao SET processada_para_ato = NULL '
+                        'WHERE id = ANY(:ids)'
+                    ),
+                    parametros,
+                )
+                db.session.commit()
+            except Exception as exception:
+                db.session.rollback()
+                raise exception
+
     def get_edicao(self, data: date) -> Edicao | None:
         """Edição da data com suas publicações e atos, ou None se não foi coletada."""
         with DBConnectionHandler() as db:

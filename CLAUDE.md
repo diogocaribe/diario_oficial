@@ -97,6 +97,7 @@ python diario_oficial/cli.py raspar-doe-bruto 12-11-2024 [--no-save-db]
 python diario_oficial/cli.py transformar-doe-bruto-publicacao 12-11-2024 [--no-transformar-publicacao] [--no-save-db]
 python diario_oficial/cli.py transformar-publicacao-ato
 python diario_oficial/cli.py auditar-publicacao-ato 12-11-2024 [--no-save-db]
+python diario_oficial/cli.py reprocessar-publicacoes-reprovadas [--no-save-db]  # todas as datas: apaga os atos com auditoria = false, separa e audita de novo
 
 # Via container: o ENTRYPOINT do Dockerfile já é `python diario_oficial/cli.py`
 docker compose run --rm app raspar-doe-bruto 12-11-2024 --no-save-db
