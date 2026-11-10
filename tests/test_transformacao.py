@@ -37,6 +37,81 @@ def test_varias_portarias(assinatura):
     assert atos[1].startswith('PORTARIA Nº 35.469')
 
 
+@pytest.mark.parametrize(
+    'titulo',
+    [
+        'Acordo de Cooperação Técnica n° 001/2020. Processo n° 027.1430.2020.0000154-85.',
+        'Acordo de Cooperação n° 002/2020. Processo n° 027.1430.2019.0003118-30.',
+        'RECOMENDAÇÃO Nº 06 DE 28 DE NOVEMBRO DE 2019.',
+        'RECOMENDAÇÃO CEPRAM Nº 01, DE 06 DE NOVEMBRO DE 2020.',
+        'SECRETARIA DO MEIO AMBIENTE - RESULTADO DE JULGAMENTO DO CHAMAMENTO PÚBLICO N°1',
+        'Portaria Nº 21299 de 20 de Agosto de 2020',
+        'LICENÇA TRATAMENTO DE SAÚDE DEFERIDA PELA JUNTA MÉDICA OFICIAL DO ESTADO',
+        'TERMO DE INSTAURAÇÃO DE PROCESSO ADMINISTRATIVO',
+        '(*)PORTARIA CONJUNTA SEMA/INEMA N° 04 DE 05 DE AGOSTO DE 2021.',
+        '*PORTARIA Nº 20.386 DE 06 DE ABRIL DE 2020.',
+        'INSTRUÇÃO NORMATIVA SEMA/INEMA Nº 01 DE 24 DE AGOSTO DE 2021.',
+        'INSTRUÇÃO NORMATIVA CONJUNTA SEMA/INEMA Nº 01 DE 16 DE DEZEMBRO DE 2021.',
+        'INSTRUÇÃO NORMATIVA SEMA Nº 003 DE 12 DE SETEMBRO DE 2023',
+        'Instrução Normativa SEMA/INEMA Nº 15, de 27 de outubro de 2022.',
+        'CONSELHO ESTADUAL DO MEIO AMBIENTE - CEPRAM. Errata da RESOLUÇÃO Nº 4.952.',
+        'AVISO DE CHAMAMENTO PÚBLICO Nº 01/2022',
+        'RESULTADO FINAL DO CHAMAMENTO PÚBLICO Nº 001/2021',
+        'PRORROGAÇÃO DO CRONOGRAMA PARA ELEIÇÃO DOS MEMBROS DO COMITÊ',
+        '2ª PRORROGAÇÃO DO CRONOGRAMA PARA ELEIÇÃO DOS MEMBROS DO COMITÊ',
+        'CRONOGRAMA PROCESSO ELEITORAL APA DO RIO PRETO',
+        'DELIBERAÇÃO Nº 002/2022 - RESULTADO DAS AVALIAÇÕES',
+        'NOTIFICAÇÃO ADMINISTRATIVA',
+        'COMUNICADO',
+        'ERRATA referente ao processo nº 2021.001.001753/INEMA/LIC-01753',
+        'A SECRETÁRIA DO MEIO AMBIENTE DO ESTADO DA BAHIA - SEMA, informa',
+        'A SECRETARIA DO MEIO AMBIENTE DO ESTADO DA BAHIA, torna público',
+        'AUTORIZAÇÃO A SECRETARIA DO MEIO AMBIENTE DO ESTADO torna público',
+        'O SECRETÁRIO DO MEIO AMBIENTE e a DIRETORA GERAL DO INEMA, RESOLVEM atualizar',
+    ],
+)
+def test_titulo_que_abre_a_publicacao_vira_ato(titulo):
+    texto = ato(titulo, MARCIA)
+    assert separar_e_auditar(texto) == [texto]
+
+
+@pytest.mark.parametrize(
+    'titulo',
+    [
+        'COMUNICADO O Instituto do Meio Ambiente',
+        'TERMO DE INSTAURAÇÃO DE PROCESSO ADMINISTRATIVO',
+        'TERMO DE ADESÃO E COMPROMISSO AO PROTOCOLO DE FISCALIZAÇÃO',
+        'RECOMENDAÇÃO CEPRAM Nº 02 DE 01 DE DEZEMBRO DE 2021',
+        '3ª PRORROGAÇÃO DO CRONOGRAMA PARA ELEIÇÃO',
+        '(*) PORTARIA Nº 26.488 DE 13 DE JULHO DE 2022.',
+        'ORTARIA Nº 26.614 DE 01 DE AGOSTO DE 2022.',
+    ],
+)
+def test_titulo_depois_de_assinatura_abre_outro_ato(titulo):
+    portaria = ato('PORTARIA Nº 35.468 DE 05 DE OUTUBRO DE 2026.', MARCIA)
+    seguinte = ato(titulo, DANILO)
+    assert separar_ato(f'{portaria}\r\n{seguinte}') == [portaria, seguinte]
+
+
+@pytest.mark.parametrize(
+    'corpo',
+    [
+        'Art. 1º - Conceder AUTORIZAÇÃO DE SUPRESSÃO DA VEGETAÇÃO',
+        'função de Gestor, no âmbito do Acordo de Cooperação Técnica n° 003/2020',
+        'A inscrição seguirá\nAUTORIZAÇÃO A SECRETARIA DO MEIO AMBIENTE',
+    ],
+)
+def test_titulo_de_abertura_no_corpo_nao_inicia_ato(corpo):
+    texto = f'PORTARIA Nº 35.468 DE 05 DE OUTUBRO DE 2026. {corpo}. {MARCIA}'
+    assert separar_ato(texto) == [texto]
+
+
+def test_cabecalho_autorizacao_nao_vira_ato_separado():
+    aviso = ato('AVISO DE CONSULTA PÚBLICA A SECRETÁRIA torna público', DANILO)
+    texto = f'AUTORIZAÇÃO SECRETARÍA DO MEIO AMBIENTE DO ESTADO DA BAHIA {aviso}'
+    assert separar_ato(texto) == [aviso]
+
+
 def test_citacao_de_portaria_nao_inicia_ato():
     texto = (
         'PORTARIA Nº 35.508 DE 09 DE OUTUBRO DE 2026. Todos nomeados pela\r\n'

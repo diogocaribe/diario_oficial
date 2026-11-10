@@ -47,6 +47,20 @@ PREAMBULO_DA_DIRETORA = re.compile(
 )
 
 
+# Títulos que só valem na abertura da publicação: no corpo dos atos são citações comuns
+# ('Conceder AUTORIZAÇÃO DE SUPRESSÃO', 'no âmbito do Acordo de Cooperação Técnica nº 09').
+# Usado em separar_ato, com re.VERBOSE: use \s+ entre as palavras.
+TITULOS_DE_ABERTURA = r"""
+    Acordo\s+de\s+Cooperação(?:\s+Técnica)?\s+n[º°]|
+    Instrução\s+Normativa\s+[A-Z/]+\s+N[º°o]|
+    AUTORIZAÇÃO\s+A\s+SECRET[AÁ]RIA|
+    A\s+SECRET[AÁ]RIA\s+DO\s+MEIO\s+AMBIENTE|
+    (?s:O\s+SECRETÁRIO\b.{0,300}?\sRESOLVEM\s)|
+    CONSELHO\s+ESTADUAL\s+DO\s+MEIO\s+AMBIENTE\s*-\s*CEPRAM\.\s+Errata|
+    SECRETARIA\s+DO\s+MEIO\s+AMBIENTE\s*-\s*RESULTADO\s+DE\s+JULGAMENTO
+"""
+
+
 def _e_citacao(texto, inicio):
     """Indica se o termo em `inicio` é citação dentro do ato, e não início de outro."""
     anterior = texto[max(0, inicio - 30) : inicio]
@@ -61,25 +75,38 @@ def separar_ato(texto):
     # Padrão para identificar o início de um ato (portaria, retificação, edital)
     # Com re.VERBOSE, espaços literais são ignorados: use \s+ entre as palavras.
     termos = r"""(?s:O\s+DIRETOR\s+GERAL\s+DO\s+INSTITUTO.{0,300}?(?:DECIDE|RESOLVE)\s*:?\s*PORTARIA\s+N[º°])|
-                PORTARIA\s+N[ºo]\s+\d{1,3}(?:\.\d{3})?/\d{4}\s+-\s+Retificar\s+a\s+PORTARIA\s+N[ºo]\s+\d{1,3}(?:\.\d{3})?/\d{4}|PORTARIA\s*Nº\s*\d{2}.\d{3}/\d{4}\s+.*\s*Revogar.*\s*.*PORTARIA|PORTARIA\s+Nº\s+\d{2}.\d{3}/\d{4}|PORTARIA\s*Nº\s*\d{1,2}.\d{1,3}\s+DE\s+\d{1,2}.*\d{4}|Portaria\s+N[º°]\s+\d{8}|PORTARIA|
+                PORTARIA\s+N[ºo]\s+\d{1,3}(?:\.\d{3})?/\d{4}\s+-\s+Retificar\s+a\s+PORTARIA\s+N[ºo]\s+\d{1,3}(?:\.\d{3})?/\d{4}|PORTARIA\s*Nº\s*\d{2}.\d{3}/\d{4}\s+.*\s*Revogar.*\s*.*PORTARIA|PORTARIA\s+Nº\s+\d{2}.\d{3}/\d{4}|PORTARIA\s*Nº\s*\d{1,2}.\d{1,3}\s+DE\s+\d{1,2}.*\d{4}|Portaria\s+N[º°]\s+\d{5,8}|PORTARIA|
+                \(?\*\)?\s*(?:PORTARIA|EDITAL|RESOLUÇÃO|EXTRATO)|
+                (?<!\S)ORTARIA\s+N|
                 EDITAL\s*DE\s+CONVOCAÇÃO|EDITAL\s*DE\s*NOTIFICAÇÃO|EDITAL\s*DE\s*PORTARIA\s*CONJUNTA|EDITAL|
                 RETIFICAÇÃO|^Retificação\s+d[aeo]\b|
-                ERRATA\s+(?:REFERENTE|DA|DO|DE|PORTARIA|d[aeo]\b)|
+                ERRATA\s+(?:REFERENTE|referente|DA|DO|DE|PORTARIA|d[aeo]\b)|
                 RESUMO|
                 AUTORIZAÇÃO\s+AVISO\s+DE\s+CONSULTA\s+PÚBLICA|AVISO\s+DE\s+CONSULTA\s+PÚBLICA|
-                INSTRUÇÃO\s+NORMATIVA\s+N[º°o]|
+                AVISO\s+DE\s+CHAMAMENTO\s+PÚBLICO|
+                RESULTADO\s+FINAL\s+DO\s+CHAMAMENTO|
+                INSTRUÇÃO\s+NORMATIVA(?:\s+CONJUNTA)?(?:\s+[A-Z/]+)?\s+N[º°o]|
                 TORNA\s+SEM\s+EFEITO|
                 DECISÃO\s*$|
                 MOÇÃO|
+                COMUNICADO\b|
+                RECOMENDAÇÃO\s+(?:CEPRAM\s+)?N[º°o]|
+                DELIBERAÇÃO\s+N[º°o]|
+                (?:\d+ª\s+)?PRORROGAÇÃO\s+DO\s+CRONOGRAMA|
+                CRONOGRAMA\s+PROCESSO\s+ELEITORAL|
+                NOTIFICAÇÃO\s+ADMINISTRATIVA|
+                LICENÇA\s+TRATAMENTO\s+DE\s+SAÚDE|
                 TERMO\s+DE\s+APOSTILAMENTO\s+DA\s+RESOLUÇÃO|
                 TERMO\s+DE\s+COMPROMISSO|
+                TERMO\s+DE\s+INSTAURAÇÃO|
+                TERMO\s+DE\s+ADESÃO\s+E\s+COMPROMISSO|
                 RESOLUÇÃO|
                 EXTRATO|
                 CONVOCAÇÃO|
                 ^ADICIONAL\s+POR\s+TEMPO\s+DE\s+SERVIÇO|
                 SECRETÁRIO\s+.*\s*RESOLVE.*
     """
-    padrao_ato = rf'({termos})'
+    padrao_ato = rf'({termos}|\A\s*(?:{TITULOS_DE_ABERTURA}))'
 
     # Encontrar todos os inícios de atos
     inicios_atos = [
