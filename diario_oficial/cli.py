@@ -19,9 +19,10 @@ from rich import print, reconfigure
 from barra_topo import BarraFixaNoTopo
 from raspar_doe import raspar_diario_oficial, doe_bruto
 from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
-from dados import publicacao, ato, auditoria, log_erro
+from dados import publicacao, ato, auditoria, log_erro, tipo_ato
 
 from diario_oficial.auditoria import auditar_edicao, inicio_do_texto
+from diario_oficial.tipo_ato import compilar_catalogo, extrair_tipos_ato
 from transformacao import separar_ato, get_conteudo_texto_link
 from util import dias_do_periodo
 
@@ -328,6 +329,44 @@ def auditar_publicacao_ato(data: str, save_db: bool = True):
 
     # Achado da edição não pertence a nenhum link
     _imprimir_achados(relatorio.achados_da_publicacao(None))
+
+
+@app.command()
+def extrair_tipos_de_ato(data: Optional[str] = None, save_db: bool = True):
+    """
+    Identifica os tipos de ato (dominio.tipo_ato) citados em cada ato das publicações
+    aprovadas na auditoria e grava o resultado em processing.ato_tipo_ato. Só analisa os
+    atos que ainda não têm tipo gravado.
+
+    Args: \n
+        data (str, optional): Data 'DD-MM-YYYY'. Se informada, analisa só essa edição.
+        Padrão é todas as datas. \n
+        save_db (bool, optional): Com --no-save-db, só lista o que foi encontrado, sem
+        gravar no banco. Padrão é True.
+
+    Examples: \n
+        >>> python diario_oficial/cli.py extrair-tipos-de-ato --no-save-db \n
+        >>> python diario_oficial/cli.py extrair-tipos-de-ato --data 10-10-2026
+    """
+    tipos = tipo_ato.get_catalogo()
+    catalogo = compilar_catalogo(tipos)
+    nomes = {tipo.id: tipo.nome for tipo in tipos}
+    pendentes = tipo_ato.get_atos_pendentes(_data_da_cli(data) if data else None)
+
+    linhas = []
+    sem_tipo = 0
+    for ato_ in pendentes:
+        ids_tipo = extrair_tipos_ato(ato_.conteudo_ato, catalogo)
+        sem_tipo += not ids_tipo
+        linhas += [{'ato_id': ato_.id, 'tipo_ato_id': id_tipo} for id_tipo in ids_tipo]
+        if not save_db:
+            encontrados = '; '.join(nomes[id_tipo] for id_tipo in ids_tipo)
+            print(f'{ato_.id} | {escape(encontrados) or "[yellow]sem tipo[/yellow]"}')
+
+    if save_db:
+        tipo_ato.salvar(linhas)
+    print(f'[bold cyan]{len(pendentes)} atos analisados: {len(linhas)} tipos encontrados; '
+          f'{sem_tipo} atos sem tipo.[/bold cyan]')
 
 
 def _raspar_com_nova_tentativa(data: str):

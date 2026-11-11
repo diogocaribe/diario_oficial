@@ -61,6 +61,11 @@ DOE (site) ──Selenium──▶ processing.doe_bruto (doe_json JSONB, uma lin
 - Trigger `after_delete_delete_atos_da_mesma_pubalicacao`: apagar **um** ato apaga todos os
   atos da mesma publicação e volta `publicacao.processada_para_ato` para NULL. É a forma de
   reprocessar uma publicação.
+- `dominio.tipo_ato` lista os tipos de ato (nome e sigla, que não é única) e
+  `processing.ato_tipo_ato` liga cada ato aos tipos encontrados no texto, gravados por
+  `extrair-tipos-de-ato` (regras em `diario_oficial/tipo_ato.py`) só para publicações com
+  `auditoria IS TRUE`. Apagar o ato ou o tipo apaga os vínculos; ato que fica sem
+  vínculo volta a ser analisado na próxima execução.
 - Colunas de controle do pipeline: `doe_bruto.doe_bruto_para_publicacao`,
   `publicacao.conteudo_link`, `publicacao.processada_para_ato`.
 - `publicacao.auditoria` é gravada por `auditar-publicacao-ato` (regras em
@@ -98,6 +103,7 @@ python diario_oficial/cli.py transformar-doe-bruto-publicacao 12-11-2024 [--no-t
 python diario_oficial/cli.py transformar-publicacao-ato
 python diario_oficial/cli.py auditar-publicacao-ato 12-11-2024 [--no-save-db]
 python diario_oficial/cli.py reprocessar-publicacoes-reprovadas [--no-save-db]  # todas as datas: apaga os atos com auditoria = false, separa e audita de novo
+python diario_oficial/cli.py extrair-tipos-de-ato [--data 12-11-2024] [--no-save-db]  # sem data: todas as edições
 
 # Via container: o ENTRYPOINT do Dockerfile já é `python diario_oficial/cli.py`
 docker compose run --rm app raspar-doe-bruto 12-11-2024 --no-save-db

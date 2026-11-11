@@ -112,3 +112,19 @@ class TipoPublicacao(Base):
     publicacao = relationship(
         'Publicacao', back_populates='tipo_publicacao', cascade='all, delete-orphan'
     )
+
+
+class TipoAto(Base):
+    """Tipos de ato que uma publicação pode conter.
+        Ex.
+        nome : Licença de Operação
+        sigla: LO
+    A sigla não é única: a lista de origem a repete em nomes diferentes.
+    """
+
+    __tablename__ = 'tipo_ato'
+    __table_args__ = {'schema': 'dominio'}
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    nome: Mapped[str] = mapped_column(nullable=False, unique=True)
+    sigla: Mapped[str] = mapped_column(nullable=True)
