@@ -108,7 +108,7 @@ python diario_oficial/cli.py extrair-tipos-de-ato [--data 12-11-2024] [--no-save
 # Via container: o ENTRYPOINT do Dockerfile já é `python diario_oficial/cli.py`
 docker compose run --rm app raspar-doe-bruto 12-11-2024 --no-save-db
 
-# Pipeline completo em um período (raspagem, publicação, ato e auditoria); padrão de 3 meses
+# Pipeline completo em um período (raspagem, publicação, ato, auditoria e tipos de ato); padrão de 3 meses
 Scripts/pipeline_periodo.sh -i 01-07-2026
 
 ruff check . && ruff format .     # linha 88, aspas simples

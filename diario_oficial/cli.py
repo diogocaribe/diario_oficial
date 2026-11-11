@@ -389,6 +389,8 @@ ETAPAS_PIPELINE = {
     ),
     'transformar-publicacao-ato': lambda data: transformar_publicacao_ato(data=data),
     'auditar-publicacao-ato': auditar_publicacao_ato,
+    # Depois da auditoria: só os atos de publicações aprovadas recebem tipo
+    'extrair-tipos-de-ato': lambda data: extrair_tipos_de_ato(data=data),
 }
 
 
@@ -449,8 +451,9 @@ def executar_pipeline_periodo(
 ):
     """
     Executa o pipeline de cada data do período: raspagem, transformação em publicação,
-    transformação em ato e auditoria. Datas diferentes rodam em paralelo; dentro de uma
-    data, cada etapa termina antes de a seguinte começar. Se uma etapa falhar, as
+    transformação em ato, auditoria e classificação dos atos por tipo. Datas diferentes
+    rodam em paralelo; dentro de uma data, cada etapa termina antes de a seguinte
+    começar. Se uma etapa falhar, as
     seguintes não rodam nessa data e as demais datas continuam. Termina com código 1 se
     alguma data falhar; basta rodar outra vez para refazer o que faltou.
 

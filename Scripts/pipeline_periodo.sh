@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Roda o pipeline completo em um período, via container `app` (docker compose): raspagem,
-# doe_bruto → publicação, publicação → ato e auditoria. Datas diferentes rodam em paralelo
-# e, dentro de uma data, cada etapa espera a anterior. O padrão é de 3 meses.
+# doe_bruto → publicação, publicação → ato, auditoria e tipos de ato. Datas diferentes
+# rodam em paralelo e, dentro de uma data, cada etapa espera a anterior. O padrão é de
+# 3 meses.
 # Pode ser repetido: datas já coletadas não são raspadas de novo. Termina com código 1
 # se alguma data falhar; basta rodar outra vez para refazer só o que faltou.
 #
@@ -59,7 +60,7 @@ while [[ $# -gt 0 ]]; do
     -f) [[ $# -ge 2 ]] || erro 'Falta a data de -f.'; FIM="$2"; shift 2 ;;
     -m) [[ $# -ge 2 ]] || erro 'Falta o número de -m.'; MESES="$2"; shift 2 ;;
     -p) [[ $# -ge 2 ]] || erro 'Falta o número de -p.'; PROCESSOS="$2"; shift 2 ;;
-    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
     *) erro "Opção desconhecida: $1 (use -h para ajuda)" ;;
   esac
 done
