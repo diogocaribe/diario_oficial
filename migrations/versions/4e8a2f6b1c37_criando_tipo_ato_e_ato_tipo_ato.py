@@ -118,7 +118,6 @@ TIPOS_ATO = [
         'AIDF',
     ),
     ('Auto de Infração de Destruição ou Inutilização de Produtos', 'AIDP'),
-    ('Notificação', 'NOT'),
     ('Notificação de Comunicação', 'NOTC'),
     ('Notificação de Homologação', 'NOTH'),
     ('Denúncia', 'DEN'),

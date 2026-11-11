@@ -132,7 +132,6 @@ def _nomes(texto):
             'Auto de Infração de Destruição ou Inutilização de Produtos',
             'Auto de Infração de Destruição ou Inutilização de Produtos',
         ),
-        ('NOTIFICAÇÃO nº 123/2023', 'Notificação'),
         ('NOTIFICAÇÃO DE COMUNICAÇÃO', 'Notificação de Comunicação'),
         ('Notificação de Homologação', 'Notificação de Homologação'),
         ('Denúncias', 'Denúncia'),
@@ -220,8 +219,6 @@ def test_outorga_e_alteracao_de_outorga_pelo_nome_ou_pelo_sinonimo(texto, espera
 @pytest.mark.parametrize(
     'texto, curto',
     [
-        ('Notificação de Comunicação', 'Notificação'),
-        ('Notificação de Homologação', 'Notificação'),
         (
             'Termo de Compromisso de Responsabilidade Ambiental',
             'Termo de Compromisso',
@@ -247,6 +244,11 @@ def test_auto_de_infracao_sem_modalidade_nao_conta():
 )
 def test_sigla_dos_tipos_novos_em_numero_de_processo_nao_conta(texto):
     assert _nomes(texto) == []
+
+
+def test_notificacao_sem_modalidade_nao_conta():
+    # Nenhum tipo do domínio é só "Notificação"
+    assert _nomes('NOTIFICAÇÃO nº 123/2023') == []
 
 
 def test_notificacao_citada_como_ato_anterior_nao_conta():
