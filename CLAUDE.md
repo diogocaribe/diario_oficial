@@ -57,7 +57,9 @@ DOE (site) ──Selenium──▶ processing.doe_bruto (doe_json JSONB, uma lin
   em `3dabb7927524`.
 - View `vw_ato` no schema `public`, criada em `bcd56ebfe8e3`: atos das publicações com
   `auditoria IS TRUE`, com os dados da publicação, do DOE e dos domínios. O critério é o
-  resultado das regras de auditoria, não uma conferência humana.
+  resultado das regras de auditoria, não uma conferência humana. Desde `7b3d9e5a2c18` tem
+  `tipo_ato` e `sigla_tipo_ato`: uma linha por ato, com os tipos de `ato_tipo_ato` juntos
+  por `'; '` (NULL se o ato não tem tipo).
 - Trigger `after_delete_delete_atos_da_mesma_pubalicacao`: apagar **um** ato apaga todos os
   atos da mesma publicação e volta `publicacao.processada_para_ato` para NULL. É a forma de
   reprocessar uma publicação.
