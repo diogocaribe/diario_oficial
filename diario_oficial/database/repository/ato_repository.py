@@ -1,5 +1,5 @@
-from database.configs.connection import DBConnectionHandler
-from database.entity.ato import Ato
+from diario_oficial.database.configs.connection import DBConnectionHandler
+from diario_oficial.database.entity.ato import Ato
 
 
 class AtoRepository:

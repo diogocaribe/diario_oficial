@@ -1,5 +1,5 @@
-from database.configs.connection import DBConnectionHandler
-from database.entity.doe_bruto import DiarioOficialBruto
+from diario_oficial.database.configs.connection import DBConnectionHandler
+from diario_oficial.database.entity.doe_bruto import DiarioOficialBruto
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
