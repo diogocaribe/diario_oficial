@@ -13,6 +13,19 @@ from diario_oficial.database.entity.ato import Ato
 from diario_oficial.database.entity.ato_tipo_ato import AtoTipoAto
 from diario_oficial.database.entity.log_erro import LogErro
 from diario_oficial.database.entity.dominio import *
+from diario_oficial.database.entity.auto_infracao import *  # noqa: F403
+
+# Tabelas criadas pela extensão PostGIS: não são do projeto e o autogenerate as apagaria
+TABELAS_DO_POSTGIS = {'spatial_ref_sys'}
+ESQUEMAS_DO_POSTGIS = {'topology', 'tiger', 'tiger_data'}
+
+
+def include_object(objeto, nome, tipo, refletido, comparado_com):
+    if tipo == 'table' and refletido and comparado_com is None:
+        if nome in TABELAS_DO_POSTGIS or objeto.schema in ESQUEMAS_DO_POSTGIS:
+            return False
+    return True
+
 
 # import sys
 # import os
@@ -91,7 +104,10 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata, include_schemas=True
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

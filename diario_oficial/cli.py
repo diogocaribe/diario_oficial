@@ -18,7 +18,7 @@ from rich.text import Text
 from rich import print, reconfigure
 from barra_topo import BarraFixaNoTopo
 from raspar_doe import raspar_diario_oficial, doe_bruto
-from database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
+from diario_oficial.database.repository.doe_bruto_repository import DiarioOficialBrutoRepository
 from dados import publicacao, ato, auditoria, log_erro, tipo_ato
 
 from diario_oficial.auditoria import auditar_edicao, inicio_do_texto
@@ -367,6 +367,69 @@ def extrair_tipos_de_ato(data: Optional[str] = None, save_db: bool = True):
         tipo_ato.salvar(linhas)
     print(f'[bold cyan]{len(pendentes)} atos analisados: {len(linhas)} tipos encontrados; '
           f'{sem_tipo} atos sem tipo.[/bold cyan]')
+
+
+@app.command()
+def extrair_autos_infracao(
+    data: Optional[str] = None,
+    limite: Optional[int] = typer.Option(
+        None, help='Máximo de atos a processar em cada subtipo.'
+    ),
+    modelo: Optional[str] = typer.Option(None, help='Modelo do Ollama.'),
+    silencioso: bool = typer.Option(True, help='Mostra só o resumo de cada ato.'),
+    save_db: bool = True,
+    pular_extraidos: bool = typer.Option(
+        True, help='Não extrai de novo os atos que já têm extração gravada.'
+    ),
+):
+    """
+    Extrai com o LLM local (Ollama) os dados de todos os subtipos de auto de infração
+    (AIIN, AIMU, AIAD, AIAP, AIEM, AIDM, AIDF, AIDP), um depois do outro, e grava no
+    esquema auto_infracao. É o mesmo que rodar Scripts/extrair_dados_atos.py para cada
+    sigla. Um subtipo que falhar não interrompe os seguintes; termina com código 1 se
+    algum falhar.
+
+    Args: \n
+        data (str, optional): Data 'DD-MM-YYYY'. Se informada, extrai só os atos dessa
+        edição. Padrão é todas as datas. \n
+        save_db (bool, optional): Com --no-save-db, só mostra o que foi extraído, sem
+        gravar. Padrão é True. \n
+        pular_extraidos (bool, optional): Com --no-pular-extraidos, extrai de novo os
+        atos já gravados, trocando a extração anterior. Padrão é True.
+
+    Examples: \n
+        >>> python diario_oficial/cli.py extrair-autos-infracao \n
+        >>> python diario_oficial/cli.py extrair-autos-infracao --data 24-09-2026 --no-save-db --no-silencioso \n
+        >>> python diario_oficial/cli.py extrair-autos-infracao --limite 5 --no-pular-extraidos
+    """
+    # Import aqui: carrega LangChain/Ollama só para este comando
+    from diario_oficial.extracao.auto_infracao import EXTRACOES as EXTRACOES_AUTO
+    from diario_oficial.extracao_dados_atos import extrair_dados_atos
+
+    dia = _data_da_cli(data) if data else None
+    processados = {}
+    falhas = {}
+    for sigla, extracao in EXTRACOES_AUTO.items():
+        print(f'\n[bold cyan]Extraindo os autos {sigla}.[/bold cyan]')
+        try:
+            processados[sigla] = extrair_dados_atos(
+                extracao,
+                data=dia,
+                limite=limite,
+                modelo=modelo,
+                silencioso=silencioso,
+                save_db=save_db,
+                pular_extraidos=pular_extraidos,
+            )
+        except Exception as e:
+            falhas[sigla] = f'{type(e).__name__}: {e}'
+            print(f'[red]Extração de {sigla} falhou: {escape(falhas[sigla])}[/red]')
+
+    resumo = ', '.join(f'{sigla} {total}' for sigla, total in processados.items())
+    print(f'\n[bold cyan]Atos processados: {resumo or "nenhum"}.[/bold cyan]')
+    if falhas:
+        print(f'[bold red]Subtipos com falha: {", ".join(falhas)}.[/bold red]')
+        raise typer.Exit(code=1)
 
 
 def _raspar_com_nova_tentativa(data: str):

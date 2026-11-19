@@ -46,6 +46,71 @@ DOE (site) ──Selenium──▶ processing.doe_bruto (doe_json JSONB, uma lin
    e divide em atos com o regex de `transformacao.separar_ato`. Marca
    `processada_para_ato = True`.
 
+## Extração de variáveis estruturadas (`diario_oficial/extracao/`)
+
+Separada do pipeline acima: parte do texto dos atos (`processing.ato.conteudo_ato`) e
+extrai campos tipados com um LLM local (Ollama + LangChain). Sem conexão com o banco e
+sem efeito no import. Quem lê o banco, mostra e grava é
+`diario_oficial/extracao_dados_atos.py` (`extrair_dados_atos`), usado por
+`Scripts/extrair_dados_atos.py <SIGLA>` (um tipo de ato; grava só com `--save-db`) e pelo
+comando `extrair-autos-infracao` da CLI (todos os subtipos de auto; grava por padrão).
+
+- `normalizacao.py` e `utils_geo.py` (coordenadas, UTM, municípios da BA): regras
+  comuns, sem LLM.
+- `modelo_comum.py`: esquemas Pydantic comuns a todas as extrações (`Endereco`,
+  `Pessoa`, `CoordenadaGeografica`).
+- `modelo_auto_infracao.py`: os esquemas dos autos de infração, o comum
+  (`AutoInfracao`) e os de cada subtipo (`AutoInterdicao`,
+  `AutoMulta`, `AutoApreensao`..., cada um com o seu `Extracao<Subtipo>`). Os modelos
+  de outros tipos de ato ficam em módulos `modelo_<tipo>.py` próprios.
+- `llm.py`: `criar_extrator(esquema, instrucoes, ...)`, a cadeia genérica do ChatOllama.
+- `base.py`: o contrato `Extracao` (sigla do tipo de ato, pasta em `dominio.tipo_publicacao`,
+  esquema, instruções, `campo_registros`, `separar_trechos`,
+  `preencher_vazios_pela_regex`, `conferir`) e `extrair(texto, extracao, extrator)`,
+  igual para todas as extrações. `preencher_vazios_pela_regex` grava o valor da regex
+  só onde o modelo deixou `null` (no AIIN, a `modalidade`, que o modelo deixava vazia na
+  maioria dos autos) e nunca troca o que o modelo preencheu; roda antes de `conferir`.
+- `registro.py`: `EXTRACOES`, as extrações pela sigla de `dominio.tipo_ato`; é o que o
+  script recebe como parâmetro.
+- `auto_infracao.py`: a extração de **todos** os autos de infração (AIIN, AIMU, AIAD,
+  AIAP, AIEM, AIDM, AIDF, AIDP). Corte em trechos, instruções e conferência por regex são
+  os mesmos para todos; o que muda fica num `SubtipoAuto` (sigla, nome e regex da
+  penalidade, esquema, entidade, campos próprios lidos pela regex e os que ela preenche),
+  e `auto_infracao.EXTRACOES` vira uma `Extracao` por subtipo. Hoje a regex preenche a
+  `modalidade` da interdição e do embargo e só confere o `valor_multa` da multa. Subtipo
+  novo: um `SubtipoAuto` em `SUBTIPOS`, o esquema no módulo de modelos e a tabela com a
+  migração. Outro tipo de ato (não auto) ganha o próprio módulo, a própria `Extracao`
+  registrada em `registro.py` e o próprio arquivo de teste.
+- `gravacao.py`: converte os objetos Pydantic nas entidades de
+  `database/entity/auto_infracao.py`. Os modelos Pydantic (prompt) e as entidades
+  (banco) ficam **separados de propósito**: cada campo do esquema tem a coluna de mesmo
+  nome, e um campo sem coluna levanta `CampoSemColuna` (testado em
+  `tests/test_gravacao.py`). Campo novo no esquema exige a coluna e a migração. A única
+  diferença de forma: `autuado.endereco` vai para `auto_infracao.endereco_autuado_id`.
+  Lista de objetos de um subtipo (`bem_apreendido`, `produto_destruido`) vira linhas da
+  tabela filha da relação de mesmo nome (`bem_produto_autuado`).
+
+### Esquema `auto_infracao` (PostGIS)
+
+- Tabelas com o nome do tipo de ato: `auto_infracao` (comum) e uma por subtipo
+  (`auto_interdicao`, `auto_multa`, `auto_advertencia`, `auto_apreensao`, `auto_embargo`,
+  `auto_demolicao`, `auto_destruicao_fornos`, `auto_destruicao_produtos`; herança
+  joined-table, PK = FK), `bem_produto_autuado` (bens apreendidos e produtos destruídos),
+  mais `extracao_trecho` (um por trecho enviado ao
+  modelo, com `erro`, `conferencia` em JSONB e `preenchido_pela_regex`), `pessoa`,
+  `endereco` e `coordenada_extraida_trecho` (os pares como estão no texto). As
+  colunas de cada subtipo ficam só na tabela dele (ex.: `auto_interdicao`): olhar só
+  essa tabela parece "poucos autos preenchidos".
+- `pessoa` é única por (`tipo_documento`, `nro_documento`), com CPF/CNPJ só em dígitos;
+  sem documento, uma pessoa por auto. O endereço é do auto, não da pessoa.
+  `auto_infracao.autuado_nome` guarda a grafia de cada auto.
+- `ponto` e `poligono` são `geometry` em SIRGAS 2000 (4674), convertidos do datum citado
+  no texto (`sistema_referencia_espacial` guarda o original).
+- Reprocessar: `--save-db` apaga os `extracao_trecho` do ato para a sigla e grava de novo
+  (cascata para autos e coordenadas). Endereços e pessoas órfãos não são apagados.
+- O banco precisa do PostGIS: o compose usa `postgis/postgis:18-3.6`. O `env.py` ignora
+  `spatial_ref_sys` e os esquemas do PostGIS no autogenerate.
+
 ## Modelo de dados
 
 - Schema `processing`: `doe_bruto`, `publicacao`, `ato`
@@ -113,6 +178,12 @@ docker compose run --rm app raspar-doe-bruto 12-11-2024 --no-save-db
 # Pipeline completo em um período (raspagem, publicação, ato, auditoria e tipos de ato); padrão de 3 meses
 Scripts/pipeline_periodo.sh -i 01-07-2026
 
+# Extração dos dados de um tipo de ato com o Ollama (siglas AI*, pasta Portarias); grava só com --save-db
+python Scripts/extrair_dados_atos.py AIIN --data 24-09-2026 [--limite 20] [--silencioso]
+python Scripts/extrair_dados_atos.py AIIN --ato-id 5604 --ato-id 1469
+python Scripts/extrair_dados_atos.py AIIN --save-db --pular-extraidos --silencioso  # grava no esquema auto_infracao
+python diario_oficial/cli.py extrair-autos-infracao [--data 24-09-2026] [--limite 5] [--no-save-db] [--no-pular-extraidos] [--no-silencioso]  # todos os AI*
+
 ruff check . && ruff format .     # linha 88, aspas simples
 
 # Testes: `addopts` em pyproject.toml ignora o teste quebrado (ver Armadilhas).
@@ -134,13 +205,14 @@ importado**, com `data_inicio`/`data_fim` fixos no código. Não importe esse m�
 
 ## Armadilhas conhecidas
 
-- **Imports mistos.** Os módulos usam dois estilos: `from database.repository...`,
-  `import util`, `from raspar_doe import ...` (exigem `diario_oficial/` no `sys.path`, que é o
+- **Imports mistos.** Os módulos usam dois estilos: `import util`, `import dados`,
+  `from raspar_doe import ...` (exigem `diario_oficial/` no `sys.path`, que é o
   que acontece ao rodar `python diario_oficial/cli.py`) **e** `from diario_oficial.settings
   import ...` (exige o pacote instalado pelo `poetry install`). Rodar com `python -m` ou de
   outro diretório quebra. Ao mexer nisso, cuidado com o mesmo módulo de entidade sendo
   carregado duas vezes por nomes diferentes (`database.entity.x` e
-  `diario_oficial.database.entity.x`): o SQLAlchemy reclama de tabela/mapper duplicado.
+  `diario_oficial.database.entity.x`): o SQLAlchemy reclama de tabela/mapper duplicado. Por
+  isso o pacote `database` é sempre importado como `diario_oficial.database...`.
 - `Settings()` lê `.env` do diretório atual. Sem `.env`, qualquer import de repositório falha.
 - `raspar_doe.py` executa código no import (cria `ChromeOptions`, listas de seleção) e
   `dados.py` instancia os repositórios no import.

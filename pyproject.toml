@@ -18,6 +18,9 @@ alembic = "^1.13.2"
 sqlalchemy-utils = "^0.41.2"
 typer = "^0.12.5"
 psycopg = {version = "^3.2.4", extras = ["binary"]}
+langchain-ollama = "^1.1.0"
+pyproj = "^3.8.0"
+geoalchemy2 = "^0.21.0"
 
 
 [tool.poetry.group.dev.dependencies]

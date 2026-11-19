@@ -1,0 +1,16 @@
+# Fora do contexto do build. A raiz é montada em /diario_oficial pelo compose, então o
+# container em execução continua vendo esses arquivos (inclusive o .env).
+
+# Caches: podem ter sido criados pelo container como root e quebrar o build.
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/
+*.pyc
+
+# Não devem ficar gravados na imagem.
+.git/
+.env
+.venv/
+
+# Saídas locais da extração com LLM.
+*.jsonl
