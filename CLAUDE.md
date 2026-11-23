@@ -111,6 +111,12 @@ comando `extrair-autos-infracao` da CLI (todos os subtipos de auto; grava por pa
   (cascata para autos e coordenadas). O trigger `after_delete_apagar_endereco_do_auto`
   (`c4e8a1d6f2b7`) apaga os endereços de cada auto apagado; a pessoa continua (FK
   `RESTRICT`, pode estar em outros autos), mesmo que fique sem auto.
+- Views (`f2b6d8a4c1e9`), uma linha por auto: `auto_infracao.vw_auto_infracao` (colunas
+  comuns, autuado, endereços em texto, geometria, ato/publicação/edição do DOE) e uma
+  `vw_<tabela do subtipo>` por subtipo (`vw_auto_multa`...), que é `vw_auto_infracao`
+  mais as colunas do subtipo; na apreensão e na destruição de produtos os bens vão
+  juntos em texto. As de subtipo dependem de `vw_auto_infracao`: mudar uma coluna
+  dela exige apagar e recriar todas.
 - O banco precisa do PostGIS: o compose usa `postgis/postgis:18-3.6`. O `env.py` ignora
   `spatial_ref_sys` e os esquemas do PostGIS no autogenerate.
 
