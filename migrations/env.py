@@ -12,6 +12,7 @@ from diario_oficial.database.entity.publicacao import Publicacao
 from diario_oficial.database.entity.ato import Ato
 from diario_oficial.database.entity.ato_tipo_ato import AtoTipoAto
 from diario_oficial.database.entity.log_erro import LogErro
+from diario_oficial.database.entity.pessoa import Pessoa
 from diario_oficial.database.entity.dominio import *
 from diario_oficial.database.entity.auto_infracao import *  # noqa: F403
 

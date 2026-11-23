@@ -97,17 +97,20 @@ comando `extrair-autos-infracao` da CLI (todos os subtipos de auto; grava por pa
   `auto_demolicao`, `auto_destruicao_fornos`, `auto_destruicao_produtos`; herança
   joined-table, PK = FK), `bem_produto_autuado` (bens apreendidos e produtos destruídos),
   mais `extracao_trecho` (um por trecho enviado ao
-  modelo, com `erro`, `conferencia` em JSONB e `preenchido_pela_regex`), `pessoa`,
+  modelo, com `erro`, `conferencia` em JSONB e `preenchido_pela_regex`),
   `endereco` e `coordenada_extraida_trecho` (os pares como estão no texto). As
   colunas de cada subtipo ficam só na tabela dele (ex.: `auto_interdicao`): olhar só
   essa tabela parece "poucos autos preenchidos".
-- `pessoa` é única por (`tipo_documento`, `nro_documento`), com CPF/CNPJ só em dígitos;
-  sem documento, uma pessoa por auto. O endereço é do auto, não da pessoa.
+- `pessoa` fica em `public` (`d5f9b2c7e3a8`), comum a todas as extrações: a mesma
+  pessoa pode aparecer em atos de tipos diferentes. É única por (`tipo_documento`,
+  `nro_documento`), com CPF/CNPJ só em dígitos; sem documento, uma pessoa por auto. O endereço é do auto, não da pessoa.
   `auto_infracao.autuado_nome` guarda a grafia de cada auto.
 - `ponto` e `poligono` são `geometry` em SIRGAS 2000 (4674), convertidos do datum citado
   no texto (`sistema_referencia_espacial` guarda o original).
 - Reprocessar: `--save-db` apaga os `extracao_trecho` do ato para a sigla e grava de novo
-  (cascata para autos e coordenadas). Endereços e pessoas órfãos não são apagados.
+  (cascata para autos e coordenadas). O trigger `after_delete_apagar_endereco_do_auto`
+  (`c4e8a1d6f2b7`) apaga os endereços de cada auto apagado; a pessoa continua (FK
+  `RESTRICT`, pode estar em outros autos), mesmo que fique sem auto.
 - O banco precisa do PostGIS: o compose usa `postgis/postgis:18-3.6`. O `env.py` ignora
   `spatial_ref_sys` e os esquemas do PostGIS no autogenerate.
 
@@ -262,7 +265,9 @@ importado**, com `data_inicio`/`data_fim` fixos no código. Não importe esse m�
 - Migrações: uma por mudança, mensagem descritiva em português. SQL bruto (views, triggers,
   dados de domínio) vai em `op.execute(sa.text(...))` com `downgrade` correspondente. Toda
   tabela nova precisa de `__table_args__ = {'schema': ...}` e de um import em
-  `migrations/env.py` para o autogenerate enxergar.
+  `migrations/env.py` para o autogenerate enxergar. A exceção é `public` (ex.:
+  `entity/pessoa.py`): vai **sem** `schema`, porque o Alembic reflete o esquema padrão
+  sem nome e `schema='public'` faria o autogenerate propor apagar e recriar a tabela.
 - Ao adicionar uma secretaria/órgão novo: (1) incluir na lista de seleção em `raspar_doe.py`,
   (2) criar uma migração que insere o nome exato em `dominio.*`, (3) validar a explosão com
   `Scripts/explode.sql`.

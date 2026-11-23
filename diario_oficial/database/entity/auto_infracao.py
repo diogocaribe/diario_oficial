@@ -11,9 +11,11 @@ tabelas ligadas pela chave primária. Quem converte o objeto Pydantic nestas ent
 - ``ExtracaoTrecho``: um trecho de ato que foi para o modelo, com o erro, se houve, a
   conferência contra a regex e os campos que a regex preencheu no lugar do modelo.
   Apagar os trechos de um ato apaga, em cascata, tudo o que foi extraído dele.
-- ``Pessoa``: uma por CPF/CNPJ (sem documento, uma por auto). O endereço não fica na
+- O autuado fica em ``public.pessoa`` (``entity/pessoa.py``), comum a todas as
+  extrações: uma por CPF/CNPJ (sem documento, uma por auto). O endereço não fica na
   pessoa: é um fato do auto, válido na data do ato.
-- ``Endereco``: endereço do autuado ou local da infração, sempre de um auto.
+- ``Endereco``: endereço do autuado ou local da infração, sempre de um auto. Apagar o
+  auto apaga os endereços dele (trigger ``after_delete_apagar_endereco_do_auto``).
 - ``BemProdutoAutuado``: bem apreendido (AIAP) ou produto destruído (AIDP) de um auto.
 """
 
@@ -29,12 +31,12 @@ from sqlalchemy import (
     Numeric,
     Text,
     func,
-    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from diario_oficial.database.configs.base import Base
+from diario_oficial.database.entity.pessoa import Pessoa
 
 # processing.ato (alvo da FK de extracao_trecho) e as entidades das relações dele
 # precisam estar no metadata quando estas tabelas são usadas fora do Alembic.
@@ -85,34 +87,6 @@ class ExtracaoTrecho(Base):
         cascade='all, delete-orphan',
         passive_deletes=True,
         order_by='AutoInfracao.id',
-    )
-
-
-class Pessoa(Base):
-    """Pessoa física ou jurídica autuada, única pelo documento quando ele existe."""
-
-    __tablename__ = 'pessoa'
-    __table_args__ = (
-        CheckConstraint(
-            "tipo_documento IN ('CPF', 'CNPJ', 'RG')", name='tipo_documento'
-        ),
-        Index(
-            'uq_pessoa_documento',
-            'tipo_documento',
-            'nro_documento',
-            unique=True,
-            postgresql_where=text('nro_documento IS NOT NULL'),
-        ),
-        {'schema': ESQUEMA},
-    )
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    nome: Mapped[str] = mapped_column(
-        Text, nullable=False, comment='Nome da primeira vez em que a pessoa apareceu.'
-    )
-    tipo_documento: Mapped[str | None] = mapped_column(Text)
-    nro_documento: Mapped[str | None] = mapped_column(
-        Text, comment='Só os dígitos, para CPF e CNPJ.'
     )
 
 
@@ -186,8 +160,8 @@ class AutoInfracao(Base):
         ARRAY(Text), nullable=False, server_default='{}'
     )
     # RESTRICT: a pessoa pode estar em vários autos; não some com um deles
-    autuado_id: Mapped[int] = mapped_column(
-        ForeignKey(f'{ESQUEMA}.pessoa.id', ondelete='RESTRICT'),
+    autuado_pessoa_id: Mapped[int] = mapped_column(
+        ForeignKey('pessoa.id', ondelete='RESTRICT'),
         nullable=False,
         index=True,
         comment='Pessoa autuada, única pelo CPF/CNPJ; sem documento, uma por auto.',
