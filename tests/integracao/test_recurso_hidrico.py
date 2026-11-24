@@ -3,6 +3,8 @@
 Usa os textos reais de ``test_outorga``, extraídos só pela regex (sem Ollama).
 """
 
+from datetime import date
+
 import pytest
 from sqlalchemy import delete, func, select, text
 from sqlalchemy.exc import IntegrityError
@@ -21,6 +23,7 @@ from tests.test_outorga import (
     DUAS_PORTARIAS_24350,
     INTERVENCAO_27768,
     LANCAMENTO_24493,
+    VALIDA_ATE_22968,
 )
 
 pytestmark = pytest.mark.integracao
@@ -199,3 +202,110 @@ def test_uso_incoerente_e_recusado(
                     'metodos': metodos,
                 },
             )
+
+
+# Views: uma por tipo de uso, uma linha por ponto, com a portaria e o DOE.
+
+VIEWS = (
+    'vw_outorga_captacao',
+    'vw_outorga_lancamento',
+    'vw_outorga_intervencao',
+)
+
+
+def linhas(banco, view: str) -> list[dict]:
+    with banco.connect() as conexao:
+        return [
+            dict(linha)
+            for linha in conexao.execute(
+                text(
+                    'SELECT *, ST_SRID(ponto) AS srid '
+                    f'FROM recurso_hidrico.{view} ORDER BY uso_recurso_hidrico_id'
+                )
+            ).mappings()
+        ]
+
+
+def test_captacao_aparece_na_view_com_a_portaria_e_a_edicao(banco, criar_publicacao):
+    _, [ato_id] = criar_publicacao([CAPTACAO_SUBTERRANEA_1156])
+    gravar(ato_id, CAPTACAO_SUBTERRANEA_1156)
+
+    [linha] = linhas(banco, 'vw_outorga_captacao')
+    assert linha['ato_id'] == ato_id
+    assert linha['sigla_tipo_ato'] == 'OUT'
+    assert linha['nro_portaria'] == '20771'
+    assert linha['outorgado_nro_documento'] == '24671320568'
+    assert linha['municipio_outorgado'] == 'Barro Alto'
+    assert linha['modo'] == 'captacao_subterranea'
+    assert linha['finalidades'] == 'irrigacao'
+    assert linha['municipios'] == 'Barro Alto'
+    assert linha['metodos_irrigacao'] == 'gotejamento'
+    assert linha['srid'] == 4674
+    assert linha['tipo_publicacao'] == 'Portarias'
+    assert linha['dt_edicao'] is not None
+    # Portaria de 08/06/2020 com prazo de 4 anos.
+    assert linha['dt_vencimento'] == date(2024, 6, 8)
+
+
+def test_cada_uso_so_na_sua_view_e_a_uniao_da_todos_os_pontos(banco, criar_publicacao):
+    _, atos = criar_publicacao(
+        [CAPTACAO_SUBTERRANEA_1156, LANCAMENTO_24493, INTERVENCAO_27768]
+    )
+    for ato_id, texto in zip(
+        atos, (CAPTACAO_SUBTERRANEA_1156, LANCAMENTO_24493, INTERVENCAO_27768)
+    ):
+        gravar(ato_id, texto)
+
+    modos = {view: {linha['modo'] for linha in linhas(banco, view)} for view in VIEWS}
+    assert modos == {
+        'vw_outorga_captacao': {'captacao_subterranea'},
+        'vw_outorga_lancamento': {'lancamento_efluente'},
+        'vw_outorga_intervencao': {'intervencao'},
+    }
+    with Session(banco) as sessao:
+        pontos = contar(sessao, entidades.PontoUso)
+    assert sum(len(linhas(banco, view)) for view in VIEWS) == pontos
+
+
+def test_colunas_do_lancamento_e_da_intervencao(banco, criar_publicacao):
+    _, [lancamento, intervencao] = criar_publicacao(
+        [LANCAMENTO_24493, INTERVENCAO_27768]
+    )
+    gravar(lancamento, LANCAMENTO_24493)
+    gravar(intervencao, INTERVENCAO_27768)
+
+    [linha] = linhas(banco, 'vw_outorga_lancamento')
+    assert linha['parametros_efluente'] == (
+        'DBO: 13,94 mg/L; Coliformes Termotolerantes: 1x10³ UFC/100mL'
+    )
+    assert linha['vazao_diluicao_m3_dia'] is not None
+    tipos = [
+        linha['tipo_intervencao'] for linha in linhas(banco, 'vw_outorga_intervencao')
+    ]
+    assert tipos == ['regularizacao_barramento', 'aproveitamento_hidreletrico']
+
+
+def test_uso_sem_ponto_e_outorga_sem_outorgado_continuam_na_view(
+    banco, criar_publicacao
+):
+    _, [ato_id] = criar_publicacao([CAPTACAO_SUBTERRANEA_1156])
+    gravar(ato_id, CAPTACAO_SUBTERRANEA_1156)
+    with banco.begin() as conexao:
+        conexao.execute(text('DELETE FROM recurso_hidrico.ponto_uso'))
+        conexao.execute(
+            text('UPDATE recurso_hidrico.outorga SET outorgado_pessoa_id = NULL')
+        )
+
+    [linha] = linhas(banco, 'vw_outorga_captacao')
+    assert linha['ponto_id'] is None and linha['ponto'] is None
+    assert linha['outorgado_nro_documento'] is None
+    assert linha['nro_portaria'] == '20771'
+
+
+def test_vencimento_pela_data_valida_ate_do_texto(banco, criar_publicacao):
+    _, [ato_id] = criar_publicacao([VALIDA_ATE_22968])
+    gravar(ato_id, VALIDA_ATE_22968)
+
+    [linha] = linhas(banco, 'vw_outorga_captacao')
+    assert linha['prazo_validade_anos'] is None
+    assert linha['dt_vencimento'] == date(2038, 11, 10)

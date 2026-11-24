@@ -160,6 +160,14 @@ comando `extrair-autos-infracao` da CLI (todos os subtipos de auto; grava por pa
   `after_delete_apagar_endereco_da_outorga` apaga o endereço da outorga apagada.
 - Reprocessar: `--save-db` apaga os `extracao_trecho` do ato para a sigla e grava de
   novo, como nos autos.
+- Views (`91d5d19a8321`), uma por tipo de uso e **uma linha por ponto**:
+  `vw_outorga_captacao`, `vw_outorga_lancamento` (com vazão de diluição e
+  `parametros_efluente` em texto) e `vw_outorga_intervencao`. Cada linha traz ponto
+  (geometria), uso (listas em texto por `'; '`), portaria, outorgado e ato/publicação/
+  edição do DOE, e `dt_vencimento` ("válida até" do texto ou `dt_portaria` + prazo em
+  anos; nula se o prazo é de outra portaria). O ponto entra por LEFT JOIN (uso sem ponto aparece com `ponto_id`
+  nulo), então a união das três dá todos os pontos. As três são independentes: o
+  SELECT comum é montado na migração.
 - Ao importar no `migrations/env.py`, use o módulo inteiro: os nomes (`Endereco`,
   `ExtracaoTrecho`) repetem os de `auto_infracao`.
 
