@@ -15,6 +15,8 @@ from diario_oficial.database.entity.log_erro import LogErro
 from diario_oficial.database.entity.pessoa import Pessoa
 from diario_oficial.database.entity.dominio import *
 from diario_oficial.database.entity.auto_infracao import *  # noqa: F403
+# Módulo inteiro: os nomes (Endereco, ExtracaoTrecho...) repetem os de auto_infracao.
+import diario_oficial.database.entity.recurso_hidrico  # noqa: E402, F401
 
 # Tabelas criadas pela extensão PostGIS: não são do projeto e o autogenerate as apagaria
 TABELAS_DO_POSTGIS = {'spatial_ref_sys'}

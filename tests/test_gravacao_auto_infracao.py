@@ -5,12 +5,12 @@ import pytest
 from sqlalchemy import inspect
 
 from diario_oficial.database.entity import auto_infracao as entidades
-from diario_oficial.extracao.gravacao import (
+from diario_oficial.extracao.gravacao_auto_infracao import (
     CAMPOS_ANINHADOS,
-    CampoSemColuna,
     para_auto,
     para_trechos,
 )
+from diario_oficial.extracao.gravacao_comum import CampoSemColuna
 from diario_oficial.extracao.modelo_auto_infracao import AutoInterdicao
 from diario_oficial.extracao.modelo_comum import (
     CoordenadaGeografica,

@@ -5,8 +5,9 @@ O tipo de ato é a sigla de ``dominio.tipo_ato`` (ex.: AIIN) e escolhe a extraç
 processing.ato_tipo_ato (que só existe para publicações com
 auditoria = true), na pasta da extração (dominio.tipo_publicacao), quando ela define
 uma. Cada ato é mostrado com o texto completo, os trechos e os registros extraídos; com
-``--save-db``, o resultado também é gravado no esquema auto_infracao, trocando a
-extração anterior do mesmo ato.
+``--save-db``, o resultado também é gravado no esquema da extração (auto_infracao
+para os autos, recurso_hidrico para as outorgas), trocando a extração anterior do
+mesmo ato.
 
 Rodar a partir da raiz do repositório:
 
@@ -17,6 +18,7 @@ Rodar a partir da raiz do repositório:
     python Scripts/extrair_dados_atos.py AIIN --limite 20 --silencioso
     python Scripts/extrair_dados_atos.py AIIN --save-db --pular-extraidos --silencioso
     python Scripts/extrair_dados_atos.py AIMU --limite 20  # qualquer subtipo de auto
+    python Scripts/extrair_dados_atos.py OUT --save-db --pular-extraidos --silencioso
 """
 
 from datetime import datetime
@@ -42,7 +44,7 @@ def main(
     save_db: bool = typer.Option(
         False,
         '--save-db/--no-save-db',
-        help='Grava no esquema auto_infracao (troca a extração anterior do ato).',
+        help='Grava no banco (troca a extração anterior do ato).',
     ),
     pular_extraidos: bool = typer.Option(
         False,

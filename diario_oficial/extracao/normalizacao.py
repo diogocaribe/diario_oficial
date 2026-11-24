@@ -155,10 +155,33 @@ def _chave_municipio(texto: str) -> str:
     return ' '.join(re.sub(r'[^\w\s]', ' ', sem_acento.lower()).split())
 
 
-MUNICIPIO_POR_CHAVE = {_chave_municipio(nome): nome for nome in MUNICIPIOS_BA}
+# Grafias que o DOE usa para o nome oficial do IBGE (lidas nas outorgas).
+VARIANTES_MUNICIPIO = {
+    'Santa Cruz de Cabrália': 'Santa Cruz Cabrália',
+    'Luiz Eduardo Magalhães': 'Luís Eduardo Magalhães',
+    'Luis Eduardo Magalhães': 'Luís Eduardo Magalhães',
+    'Santa Teresinha': 'Santa Terezinha',
+    'Muquém de São Francisco': 'Muquém do São Francisco',
+    'Santa Luz': 'Santaluz',
+    'Conceição de Feira': 'Conceição da Feira',
+    'Morro de Chapéu': 'Morro do Chapéu',
+    'Mata do São João': 'Mata de São João',
+    'Jequiriçá': 'Jiquiriçá',
+    'Gentio de Ouro': 'Gentio do Ouro',
+    'Caitité': 'Caetité',
+    'América Dourado': 'América Dourada',
+    'Carfanaum': 'Cafarnaum',
+    'Senhor Bonfim': 'Senhor do Bonfim',
+    'Vitória Conquista': 'Vitória da Conquista',
+}
 
-# Prefixos e a UF que o modelo ou o texto juntam ao nome (``Município de X/BA``).
-PREFIXO_MUNICIPIO = re.compile(r'^(?:munic[ií]pio|cidade)\s+(?:de|do|da)\s+', re.I)
+MUNICIPIO_POR_CHAVE = {_chave_municipio(nome): nome for nome in MUNICIPIOS_BA} | {
+    _chave_municipio(variante): nome for variante, nome in VARIANTES_MUNICIPIO.items()
+}
+
+# Prefixos e a UF que o modelo ou o texto juntam ao nome (``Município de X/BA``,
+# ``município do Salvador``, ``do Lapão``).
+PREFIXO_MUNICIPIO = re.compile(r'^(?:(?:munic[ií]pio|cidade)\s+)?(?:de|do|da)\s+', re.I)
 UF_NO_FIM = re.compile(r'\s*(?:[/,(-]|\s)\s*(?:BA|Bahia)\)?\s*$', re.I)
 
 
@@ -166,13 +189,15 @@ def normalizar_municipio(valor: str | None) -> str | None:
     """Nome oficial do município da Bahia, ou ``None`` se não for um dos 417.
 
     Ignora acentos, maiúsculas e pontuação, tira "Município de" e a UF no fim
-    (``paulo afonso/ba`` -> ``Paulo Afonso``). A UF sozinha ("BA", "Bahia") volta
+    (``paulo afonso/ba`` -> ``Paulo Afonso``) e aceita as grafias de
+    ``VARIANTES_MUNICIPIO`` (``Santa Luz`` -> ``Santaluz``). A UF sozinha ("BA", "Bahia") volta
     ``None``: é o erro mais comum do modelo neste campo.
     """
     if not valor:
         return None
-    texto = PREFIXO_MUNICIPIO.sub('', valor.strip())
-    for candidato in (texto, UF_NO_FIM.sub('', texto)):
+    texto = valor.strip()
+    sem_prefixo = PREFIXO_MUNICIPIO.sub('', texto)
+    for candidato in (texto, sem_prefixo, UF_NO_FIM.sub('', sem_prefixo)):
         if nome := MUNICIPIO_POR_CHAVE.get(_chave_municipio(candidato)):
             return nome
     return None

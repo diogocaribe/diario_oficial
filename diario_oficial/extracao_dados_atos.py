@@ -14,11 +14,15 @@ from rich.markup import escape
 from sqlalchemy import bindparam, text
 
 from diario_oficial.database.configs.connection import DBConnectionHandler
+from diario_oficial.database.entity import recurso_hidrico
 from diario_oficial.database.repository.auto_infracao_repository import (
     AutoInfracaoRepository,
 )
+from diario_oficial.database.repository.recurso_hidrico_repository import (
+    RecursoHidricoRepository,
+)
+from diario_oficial.extracao import gravacao_auto_infracao, gravacao_outorga
 from diario_oficial.extracao.base import Extracao, achados, extrair
-from diario_oficial.extracao.gravacao import para_trechos
 from diario_oficial.settings import Settings
 
 console = Console()
@@ -54,6 +58,25 @@ def buscar_atos(extracao: Extracao, data: date | None, ids: list[int]) -> list:
         ).all()
 
 
+def repositorio_e_conversao(extracao: Extracao) -> tuple:
+    """O repositório do esquema da extração e a função que converte os trechos.
+
+    A função recebe ``(ato_id, trechos, modelo_llm)`` e devolve as entidades
+    ``ExtracaoTrecho`` do esquema: ``recurso_hidrico`` para as outorgas,
+    ``auto_infracao`` para os autos.
+    """
+    sigla = extracao.sigla_tipo_ato
+    if extracao.entidade is recurso_hidrico.Outorga:
+        return RecursoHidricoRepository(), lambda ato_id, trechos, modelo_llm: (
+            gravacao_outorga.para_trechos(ato_id, sigla, trechos, modelo_llm)
+        )
+    return AutoInfracaoRepository(), lambda ato_id, trechos, modelo_llm: (
+        gravacao_auto_infracao.para_trechos(
+            ato_id, sigla, extracao.entidade, trechos, modelo_llm
+        )
+    )
+
+
 def extrair_dados_atos(
     extracao: Extracao,
     data: date | None = None,
@@ -66,7 +89,8 @@ def extrair_dados_atos(
 ) -> int:
     """Extrai os dados dos atos do tipo de ``extracao``, mostra e, se pedido, grava.
 
-    Com ``save_db``, troca a extração anterior de cada ato no esquema auto_infracao.
+    Com ``save_db``, troca a extração anterior de cada ato no esquema da extração
+    (``auto_infracao`` ou ``recurso_hidrico``).
 
     Returns:
         Quantidade de atos processados.
@@ -76,7 +100,7 @@ def extrair_dados_atos(
             f'a extração {extracao.sigla_tipo_ato} não tem tabela para gravar'
         )
     settings = Settings()
-    repositorio = AutoInfracaoRepository()
+    repositorio, para_trechos = repositorio_e_conversao(extracao)
     atos = buscar_atos(extracao, data, ato_ids or [])
     if pular_extraidos:
         extraidos = repositorio.get_atos_extraidos(
@@ -105,11 +129,13 @@ def extrair_dados_atos(
             bool(achados(trecho.get('conferencia'))) for trecho in trechos
         )
         preenchidos = sum(len(trecho['preenchido_pela_regex']) for trecho in trechos)
+        pelo_modelo = sum(len(trecho['preenchido_pelo_modelo']) for trecho in trechos)
         console.rule(
             f'[{numero}/{len(atos)}] ato {ato.id} ({ato.dt_edicao.isoformat()}): '
             f'{len(trechos)} trechos, {registros} registros, {erros} erros, '
             f'{com_achados} com achados na conferência, '
             f'{preenchidos} campos preenchidos pela regex, '
+            f'{pelo_modelo} pelo modelo, '
             f'{time.monotonic() - inicio:.0f}s'
         )
         if silencioso:
@@ -120,13 +146,7 @@ def extrair_dados_atos(
             repositorio.gravar_extracao(
                 ato.id,
                 extracao.sigla_tipo_ato,
-                para_trechos(
-                    ato.id,
-                    extracao.sigla_tipo_ato,
-                    extracao.entidade,
-                    trechos,
-                    nome_modelo,
-                ),
+                para_trechos(ato.id, trechos, nome_modelo),
             )
     return len(atos)
 
@@ -145,12 +165,24 @@ def imprimir_trechos(trechos: list[dict]) -> None:
 
 
 def imprimir_conferencia(trechos: list[dict], indices: list[int] | None = None) -> None:
-    """Mostra, por trecho, os achados da conferência e os campos preenchidos pela regex.
+    """Mostra, por trecho, os achados da conferência e os campos preenchidos.
 
-    Trecho sem achado e sem campo preenchido não aparece.
+    Campos preenchidos pela regex (onde o modelo deixou vazio) ou pelo modelo (onde a
+    regex deixou vazio), e o erro do modelo nas extrações pela regex. Trecho sem nada
+    disso não aparece.
     """
     for indice, trecho in zip(indices or range(1, len(trechos) + 1), trechos):
         encontrados = achados(trecho.get('conferencia'))
+        if trecho['preenchido_pelo_modelo']:
+            console.print(
+                f'[yellow]Trecho {indice}, preenchido pelo modelo:[/yellow]',
+                ', '.join(trecho['preenchido_pelo_modelo']),
+            )
+        if 'erro_modelo' in trecho:
+            console.print(
+                f'[bold red]Trecho {indice}, erro do modelo:[/bold red]',
+                escape(trecho['erro_modelo']),
+            )
         if trecho['preenchido_pela_regex']:
             console.print(
                 f'[yellow]Trecho {indice}, preenchido pela regex:[/yellow]',

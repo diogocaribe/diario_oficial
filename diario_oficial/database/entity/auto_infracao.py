@@ -6,7 +6,7 @@ cada objeto aninhado é uma tabela ligada por FK, cada lista de objetos é uma t
 filha e cada lista de textos é um ``text[]``. A herança também é a mesma: cada subtipo
 (``AutoInterdicao``, ``AutoMulta``, ``AutoEmbargo``...) estende ``AutoInfracao``, em
 tabelas ligadas pela chave primária. Quem converte o objeto Pydantic nestas entidades é
-``diario_oficial.extracao.gravacao``.
+``diario_oficial.extracao.gravacao_auto_infracao``.
 
 - ``ExtracaoTrecho``: um trecho de ato que foi para o modelo, com o erro, se houve, a
   conferência contra a regex e os campos que a regex preencheu no lugar do modelo.

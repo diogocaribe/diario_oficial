@@ -5,7 +5,7 @@ from sqlalchemy import inspect
 
 from diario_oficial.database.entity import auto_infracao as entidades
 from diario_oficial.extracao import auto_infracao
-from diario_oficial.extracao.gravacao import CAMPOS_ANINHADOS, para_auto
+from diario_oficial.extracao.gravacao_auto_infracao import CAMPOS_ANINHADOS, para_auto
 from diario_oficial.extracao.modelo_auto_infracao import (
     AutoAdvertencia,
     AutoApreensao,
@@ -151,7 +151,7 @@ def test_demolicao_e_advertencia():
     assert advertencia.prazo_atendimento_dias == 90
 
 
-# Extração e gravação de cada subtipo (auto_infracao e gravacao).
+# Extração e gravação de cada subtipo (auto_infracao e gravacao_auto_infracao).
 
 # Edital com um autuado de cada subtipo (trechos reais encurtados).
 EDITAL_DE_TODOS = (
@@ -191,7 +191,8 @@ AUTUADO_DE_CADA_SIGLA = {
 
 
 def test_cada_subtipo_registrado_pela_sigla_com_o_seu_esquema():
-    assert set(EXTRACOES) == set(AUTUADO_DE_CADA_SIGLA)
+    autos = {sigla for sigla in EXTRACOES if sigla.startswith('AI')}
+    assert autos == set(AUTUADO_DE_CADA_SIGLA)
     for subtipo in auto_infracao.SUBTIPOS:
         extracao = EXTRACOES[subtipo.sigla]
         assert extracao.esquema is subtipo.esquema

@@ -1,8 +1,8 @@
 """Converte a saída de ``extrair`` nas entidades do esquema ``auto_infracao``.
 
-Os campos do esquema Pydantic vão para a coluna de mesmo nome; um campo sem coluna é
-erro (``CampoSemColuna``), para o JSON e o banco não divergirem. Os objetos aninhados
-viram entidades ligadas por FK, com uma diferença de forma: ``autuado.endereco`` (como
+As regras comuns a todas as gravações (campo na coluna de mesmo nome, endereço, pessoa,
+geometria) ficam em ``gravacao_comum``. Os objetos aninhados viram entidades ligadas
+por FK, com uma diferença de forma: ``autuado.endereco`` (como
 o modelo responde) vai para ``endereco_autuado`` do auto, porque o endereço é um fato do
 ato e não da pessoa. ``ponto`` e ``poligono`` são convertidos para o SIRGAS 2000. As
 listas de objetos de um subtipo (``bem_apreendido`` da apreensão, ``produto_destruido``
@@ -12,55 +12,21 @@ Não abre conexão: a pessoa já gravada com o mesmo documento é reaproveitada 
 repositório (``AutoInfracaoRepository``).
 """
 
-from datetime import date, time
-from decimal import Decimal
-
-from geoalchemy2 import WKTElement
 from pydantic import BaseModel
 from sqlalchemy import inspect
 
 from diario_oficial.database.entity import auto_infracao as entidades
-from diario_oficial.extracao import modelo_auto_infracao, modelo_comum
-from diario_oficial.extracao.normalizacao import normalizar_documento
-from diario_oficial.extracao.utils_geo import wkt_em_sirgas
+from diario_oficial.extracao import modelo_auto_infracao
+from diario_oficial.extracao.gravacao_comum import (
+    CampoSemColuna,
+    para_endereco,
+    para_geometria,
+    para_pessoa,
+    valor_da_coluna,
+)
 
 # Campos que não são colunas do auto: viram entidades à parte ou geometria.
 CAMPOS_ANINHADOS = {'autuado', 'local_infracao', 'coordenada', 'ponto', 'poligono'}
-
-CONVERSORES = {
-    date: date.fromisoformat,
-    time: time.fromisoformat,
-    Decimal: lambda valor: Decimal(str(valor)),
-}
-
-
-class CampoSemColuna(ValueError):
-    """Campo do esquema Pydantic que não tem coluna na entidade."""
-
-
-def _valor_da_coluna(coluna, valor):
-    if valor is None:
-        return None
-    try:
-        tipo = coluna.type.python_type
-    except NotImplementedError:
-        return valor
-    return CONVERSORES.get(tipo, lambda v: v)(valor)
-
-
-def _endereco(endereco: modelo_comum.Endereco | None) -> entidades.Endereco | None:
-    """Endereço do auto, ou ``None`` se o modelo não preencheu nenhum campo."""
-    if endereco is None:
-        return None
-    dados = endereco.model_dump()
-    if all(valor is None for valor in dados.values()):
-        return None
-    return entidades.Endereco(**dados)
-
-
-def _geometria(wkt: str | None, sistema: str | None) -> WKTElement | None:
-    convertido = wkt_em_sirgas(wkt, sistema)
-    return WKTElement(convertido, srid=entidades.SRID) if convertido else None
 
 
 def _linhas_filhas(entidade: type, itens: list[dict]) -> list:
@@ -72,7 +38,7 @@ def _linhas_filhas(entidade: type, itens: list[dict]) -> list:
         for campo, valor in item.items():
             if campo not in colunas:
                 raise CampoSemColuna(f'{entidade.__name__}.{campo}')
-            valores[campo] = _valor_da_coluna(colunas[campo], valor)
+            valores[campo] = valor_da_coluna(colunas[campo], valor)
         linhas.append(entidade(**valores))
     return linhas
 
@@ -93,28 +59,22 @@ def para_auto(
             continue
         if campo not in colunas:
             raise CampoSemColuna(f'{type(registro).__name__}.{campo}')
-        valores[campo] = _valor_da_coluna(colunas[campo], valor)
+        valores[campo] = valor_da_coluna(colunas[campo], valor)
 
     autuado = registro.autuado
     sistema = registro.sistema_referencia_espacial
     return entidade(
         **valores,
-        autuado=entidades.Pessoa(
-            nome=autuado.nome,
-            tipo_documento=autuado.tipo_documento,
-            nro_documento=normalizar_documento(
-                autuado.tipo_documento, autuado.nro_documento
-            ),
-        ),
+        autuado=para_pessoa(autuado),
         autuado_nome=autuado.nome,
-        endereco_autuado=_endereco(autuado.endereco),
-        local_infracao=_endereco(registro.local_infracao),
+        endereco_autuado=para_endereco(autuado.endereco, entidades.Endereco),
+        local_infracao=para_endereco(registro.local_infracao, entidades.Endereco),
         coordenada=[
             entidades.CoordenadaExtraidaTrecho(**par.model_dump())
             for par in registro.coordenada
         ],
-        ponto=_geometria(registro.ponto, sistema),
-        poligono=_geometria(registro.poligono, sistema),
+        ponto=para_geometria(registro.ponto, sistema),
+        poligono=para_geometria(registro.poligono, sistema),
     )
 
 

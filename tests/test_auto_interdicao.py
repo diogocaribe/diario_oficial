@@ -620,6 +620,7 @@ def test_extracao_sem_corte_nem_conferencia_manda_o_texto_inteiro():
             'registros': [],
             'modelos': [],
             'preenchido_pela_regex': [],
+            'preenchido_pelo_modelo': [],
         }
     ]
     assert extrair(None, extracao, RunnableLambda(modelo_falso)) == []

@@ -81,14 +81,37 @@ comando `extrair-autos-infracao` da CLI (todos os subtipos de auto; grava por pa
   novo: um `SubtipoAuto` em `SUBTIPOS`, o esquema no módulo de modelos e a tabela com a
   migração. Outro tipo de ato (não auto) ganha o próprio módulo, a própria `Extracao`
   registrada em `registro.py` e o próprio arquivo de teste.
-- `gravacao.py`: converte os objetos Pydantic nas entidades de
-  `database/entity/auto_infracao.py`. Os modelos Pydantic (prompt) e as entidades
-  (banco) ficam **separados de propósito**: cada campo do esquema tem a coluna de mesmo
-  nome, e um campo sem coluna levanta `CampoSemColuna` (testado em
-  `tests/test_gravacao.py`). Campo novo no esquema exige a coluna e a migração. A única
-  diferença de forma: `autuado.endereco` vai para `auto_infracao.endereco_autuado_id`.
-  Lista de objetos de um subtipo (`bem_apreendido`, `produto_destruido`) vira linhas da
-  tabela filha da relação de mesmo nome (`bem_produto_autuado`).
+- `outorga.py` e `modelo_outorga.py`: as outorgas de recursos hídricos (OUT, ROUT,
+  AOUT, AMOUT; PPV/OUT fica de fora). O texto é um modelo fixo, então aqui a ordem se
+  inverte: a extração principal é a regex (`extrair_pela_regex`) e o LLM só é chamado
+  para os campos obrigatórios que ela deixou vazios (`campos_vazios`), copiando só
+  esses (`base.preencher_vazios_pelo_modelo`); se o Ollama falhar, fica a regex e o
+  erro vai em `erro_modelo`. A regex ancora os pontos nos pares de coordenadas: o que
+  vem antes do par (corpo hídrico, "no poço 2") é do ponto seguinte, o que vem depois
+  (datum, vazão, h/d, "do poço 1", finalidade) é do anterior; um uso fecha no ponto
+  seguido de "para fins de", num § novo ou quando o modo muda. Esquema: `Outorga` →
+  `usos` (`UsoCaptacao`, `UsoLancamento`, `UsoIntervencao`, discriminados por `modo`)
+  → `pontos`. Toda vazão tem `_m3_dia` e `_m3_s`: a do texto é copiada e a outra,
+  calculada. Grava no esquema `recurso_hidrico` (`entidade=Outorga`), por
+  `gravacao_outorga.py` e `RecursoHidricoRepository`.
+- `gravacao_<tipo>.py`: um módulo por tipo de ato, que converte os objetos Pydantic
+  nas entidades do seu esquema. Os modelos Pydantic (prompt) e as entidades (banco)
+  ficam **separados de propósito**: cada campo do esquema tem a coluna de mesmo nome.
+  O comum fica em `gravacao_comum.py` (como `modelo_comum.py`): `CampoSemColuna` (campo
+  sem coluna é erro), `valor_da_coluna`, `valores_das_colunas`, `para_endereco`,
+  `para_pessoa` (CPF/CNPJ só em dígitos) e `para_geometria` (para 4674). Campo novo no
+  esquema exige a coluna e a migração.
+- `gravacao_auto_infracao.py`: autos → `database/entity/auto_infracao.py` (testado em
+  `tests/test_gravacao_auto_infracao.py`). `autuado.endereco` vai para
+  `auto_infracao.endereco_autuado_id`. Lista de objetos de um subtipo
+  (`bem_apreendido`, `produto_destruido`) vira linhas da tabela filha da relação de
+  mesmo nome (`bem_produto_autuado`).
+- `gravacao_outorga.py`: outorgas → `database/entity/recurso_hidrico.py`. O
+  `outorgado` vira `public.pessoa` + `outorgado_nome` +
+  `endereco_outorgado`; cada uso vira a entidade do seu `modo`; a `coordenada` do ponto
+  vira `latitude`/`longitude` (o `fuso_utm` não é gravado) e o `ponto` vai para 4674.
+  `extracao_dados_atos.repositorio_e_conversao` escolhe repositório e conversão pela
+  `entidade` da extração. Testes em `tests/test_gravacao_outorga.py`.
 
 ### Esquema `auto_infracao` (PostGIS)
 
@@ -119,6 +142,26 @@ comando `extrair-autos-infracao` da CLI (todos os subtipos de auto; grava por pa
   dela exige apagar e recriar todas.
 - O banco precisa do PostGIS: o compose usa `postgis/postgis:18-3.6`. O `env.py` ignora
   `spatial_ref_sys` e os esquemas do PostGIS no autogenerate.
+
+### Esquema `recurso_hidrico` (PostGIS)
+
+- Criado em `3a75dc1d4897`, entidades em `database/entity/recurso_hidrico.py`, espelhando
+  `modelo_outorga.py` (campo = coluna de mesmo nome, testado em
+  `tests/test_tabelas_recurso_hidrico.py`): `extracao_trecho` (com
+  `preenchido_pelo_modelo` e `erro_modelo`), `outorga`, `uso_recurso_hidrico` (comum) com
+  `uso_lancamento` e `uso_intervencao` (joined-table, PK = FK), `ponto_uso` (`ponto` em
+  4674 e o par como está no texto), `parametro_efluente` e `endereco` (sede do
+  outorgado).
+- A captação não tem tabela própria: `UsoCaptacao` é só uma identidade em
+  `uso_recurso_hidrico`. `tipo_uso` diz a especialização e `modo` o modo do texto; a
+  restrição `modo_do_tipo_uso` impede combinação errada. `finalidades` e
+  `metodos_irrigacao` são `text[]` presos às listas de `modelo_outorga`.
+- O outorgado fica em `public.pessoa` (FK `RESTRICT`), como o autuado. O trigger
+  `after_delete_apagar_endereco_da_outorga` apaga o endereço da outorga apagada.
+- Reprocessar: `--save-db` apaga os `extracao_trecho` do ato para a sigla e grava de
+  novo, como nos autos.
+- Ao importar no `migrations/env.py`, use o módulo inteiro: os nomes (`Endereco`,
+  `ExtracaoTrecho`) repetem os de `auto_infracao`.
 
 ## Modelo de dados
 
@@ -187,10 +230,11 @@ docker compose run --rm app raspar-doe-bruto 12-11-2024 --no-save-db
 # Pipeline completo em um período (raspagem, publicação, ato, auditoria e tipos de ato); padrão de 3 meses
 Scripts/pipeline_periodo.sh -i 01-07-2026
 
-# Extração dos dados de um tipo de ato com o Ollama (siglas AI*, pasta Portarias); grava só com --save-db
+# Extração dos dados de um tipo de ato com o Ollama (siglas AI* e OUT/ROUT/AOUT/AMOUT, pasta Portarias); grava só com --save-db
 python Scripts/extrair_dados_atos.py AIIN --data 24-09-2026 [--limite 20] [--silencioso]
 python Scripts/extrair_dados_atos.py AIIN --ato-id 5604 --ato-id 1469
 python Scripts/extrair_dados_atos.py AIIN --save-db --pular-extraidos --silencioso  # grava no esquema auto_infracao
+python Scripts/extrair_dados_atos.py OUT --save-db --pular-extraidos --silencioso   # grava no esquema recurso_hidrico
 python diario_oficial/cli.py extrair-autos-infracao [--data 24-09-2026] [--limite 5] [--no-save-db] [--no-pular-extraidos] [--no-silencioso]  # todos os AI*
 
 ruff check . && ruff format .     # linha 88, aspas simples
