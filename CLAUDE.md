@@ -239,13 +239,23 @@ python diario_oficial/cli.py extrair-autos-infracao [--data 24-09-2026] [--limit
 
 ruff check . && ruff format .     # linha 88, aspas simples
 
-# Testes: `addopts` em pyproject.toml ignora o teste quebrado (ver Armadilhas).
-pytest                                                 # suíte inteira
+# Testes: `addopts` em pyproject.toml ignora o teste quebrado (ver Armadilhas) e os de integração.
+pytest                                                 # suíte inteira (sem banco)
 pytest tests/test_auditoria.py                         # um arquivo
 pytest tests/test_auditoria.py::test_ato_cortado_no_meio_da_frase -v # um teste
+pytest -m integracao                                   # integração: banco descartável no servidor do .env
 ```
 
 Nos testes, importe pelo pacote (`from diario_oficial.transformacao import ...`).
+
+Os testes de integração ficam em `tests/integracao/` (marcador `integracao`). O
+`conftest.py` cria no servidor do `.env` um banco `teste_diario_oficial_<sufixo>`, aplica
+as migrações e o apaga no fim; o banco de trabalho não é lido nem alterado. Os
+repositórios usam esse banco porque a fixture `banco` troca o engine de
+`connection.py`, e as tabelas de dados são esvaziadas (`TRUNCATE`) depois de cada teste.
+Cobrem migrações (diff com os modelos, descer até a base e subir de novo), triggers,
+FKs `RESTRICT`/`SET NULL`, restrições `CHECK`, views, a explosão do `doe_json` e a
+gravação pelos repositórios. Precisam do `postgres` do compose no ar.
 
 O ambiente local do Poetry fica fora do repositório, em `~/.cache/pypoetry/virtualenvs`, e é
 o interpretador usado pelo painel de testes do VS Code. Não crie `.venv` na raiz: o compose
@@ -299,12 +309,14 @@ importado**, com `data_inicio`/`data_fim` fixos no código. Não importe esse m�
 - Views dependem de colunas: para remover uma coluna exposta em `vw_publicacao`, o
   `downgrade` precisa dar `DROP VIEW` antes e recriar a definição anterior
   (`CREATE OR REPLACE VIEW` não remove colunas), como faz o de `3dabb7927524`.
+  `pytest -m integracao` desce todas as migrações e pega esse erro.
 - `util.check_word_or_list_exist_in_list` só verifica a **primeira** palavra (o `return False`
   está dentro do loop). Várias regras de nível dependem desse comportamento; não "corrija"
   sem verificar a raspagem.
 - `tests/test_diario_oficial.py` importa `scripts.diario_oficial`, que não existe; por isso é
   ignorado via `addopts`. Testes novos devem ser unitários (regex de `separar_ato`, `util`,
-  `calcular_profundidade_dict`) e não depender de rede, Selenium ou banco.
+  `calcular_profundidade_dict`) e não depender de rede, Selenium ou banco; o que só o
+  banco confere (trigger, view, restrição, SQL) vai em `tests/integracao/`.
 - `rich` é usado na CLI mas vem como dependência transitiva do Typer.
 - `.project` é do DBeaver; `doc/banco_dado/` contém os modelos conceitual (UML/ODS) e lógico
   (drawio).
