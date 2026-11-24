@@ -254,8 +254,7 @@ importado**, com `data_inicio`/`data_fim` fixos no código. Não importe esse m�
   (`http://selenium`), e `HOST` do banco também não pode ser `localhost` no container.
 - Views dependem de colunas: para remover uma coluna exposta em `vw_publicacao`, o
   `downgrade` precisa dar `DROP VIEW` antes e recriar a definição anterior
-  (`CREATE OR REPLACE VIEW` não remove colunas). O `downgrade` de `3dabb7927524` hoje falha por
-  isso.
+  (`CREATE OR REPLACE VIEW` não remove colunas), como faz o de `3dabb7927524`.
 - `util.check_word_or_list_exist_in_list` só verifica a **primeira** palavra (o `return False`
   está dentro do loop). Várias regras de nível dependem desse comportamento; não "corrija"
   sem verificar a raspagem.
