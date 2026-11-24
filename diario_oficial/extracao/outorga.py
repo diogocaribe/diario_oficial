@@ -122,7 +122,7 @@ MODO = re.compile(
     r'(?P<sup>CAPTACAO\s+(?:DE\s+AGUAS?\s+)?SUPERFICIAL|CAPTACAO\s+EM\s+BARRA|'
     r'DERIVACAO)|'
     r'(?P<lanc>LANCAMENTO\s+DE\s+(?:EFLUENTES?|CARGA))|'
-    r'(?P<interv>INTERVENCAO)'
+    r'(?P<interv>INTERVENC(?:AO|OES))'
 )
 
 # Grau-minuto-segundo como o DOE escreve, com os erros de digitação comuns: espaço no
@@ -163,7 +163,11 @@ BARRAMENTO = re.compile(
     r'(?=,|;|\s+NAS?\s+COORDENADAS?|$)'
 )
 DISPENSADO = re.compile(r'DISPENSAD[OA]S?\s+(?:DE|DA)\s+OUTORGA')
+# No plural a bacia é uma lista ("Bacias Hidrográficas dos Rios Itanhém, Jucuruçu e
+# Peruípe, no Ponto B5"): a vírgula só fecha antes do local.
 BACIA = re.compile(
+    r'BACIAS\s+HIDROGRAFICAS\s+(?:D[OAE]S?\s+)?(?P<bacias>.+?)'
+    r'(?=,?\s+N[OA]S?\s|,?\s+EM\s|,?\s*LOCALIZAD|;|$)|'
     r'BACIA\s+HIDROGRAFICA\s+(?:D[OAE]S?\s+)?(?P<bacia>.+?)'
     r'(?=,|;|\s+N[OA]S?\s|\s+EM\s|\s+LOCALIZAD|$)'
 )
@@ -353,6 +357,16 @@ def classificar_intervencao(texto: str) -> str:
         if re.search(padrao, chave):
             return nome
     return 'outro'
+
+
+def _tipo_intervencao(finalidade: str | None, trecho: str) -> str:
+    """Pela finalidade e, se ela não disser, pelo trecho do uso.
+
+    O trecho tem nomes de lugar que casam com as regras ("Riacho da Areia" não é
+    extração de areia): só vale quando a finalidade não classifica.
+    """
+    tipo = classificar_intervencao(finalidade or '')
+    return tipo if tipo != 'outro' else classificar_intervencao(trecho)
 
 
 def _processo(texto: str, achado: re.Match | None) -> str | None:
@@ -699,7 +713,7 @@ def _uso(
         )
         return UsoIntervencao(
             modo=modo,
-            tipo_intervencao=classificar_intervencao(texto[inicio:fim]),
+            tipo_intervencao=_tipo_intervencao(finalidade_texto, texto[inicio:fim]),
             volume_maximo_acumulacao_m3=_numero(volume['valor']) if volume else None,
             altura_maxima_m=_numero(altura['valor']) if altura else None,
             vazao_minima_jusante_m3_dia=jusante_dia,
@@ -755,7 +769,9 @@ def _usos(
                     grupo,
                     (trecho_inicio, trecho_fim),
                     prazo,
-                    _limpo(texto[bacia.start('bacia') : bacia.end('bacia')])
+                    _limpo(
+                        texto[bacia.start(bacia.lastgroup) : bacia.end(bacia.lastgroup)]
+                    )
                     if bacia
                     else None,
                     sede,

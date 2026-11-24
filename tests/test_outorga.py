@@ -13,6 +13,8 @@ from diario_oficial.extracao.base import (
     regex_com_modelo,
 )
 from diario_oficial.extracao.modelo_outorga import (
+    FINALIDADES,
+    METODOS_IRRIGACAO,
     ExtracaoOutorga,
     ParametroEfluente,
     PontoUso,
@@ -372,6 +374,7 @@ def test_ponto_converte_a_vazao_do_modelo():
         ('Santa Luz', 'Santaluz'),
         ('Luiz Eduardo Magalhães', 'Luís Eduardo Magalhães'),
         ('do Salvador', 'Salvador'),
+        ('Maragojipe', 'Maragogipe'),
     ],
 )
 def test_grafias_de_municipio_do_doe(grafia, oficial):
@@ -756,6 +759,39 @@ NUMERO_NO_LOGRADOURO_5492 = portaria(
 )
 
 
+# "para intervenções integradas" (plural) é o único aviso de que os usos são
+# intervenções; o primeiro par do Canal Caji tem aspas no lugar do minuto.
+INTERVENCOES_INTEGRADAS_5557 = portaria(
+    'PORTARIA Nº 24.052 DE 13 DE SETEMBRO DE 2021.',
+    '2021.001.003971/INEMA/LIC-03971',
+    'Autorizar a renovação do direito de uso dos recursos hídricos, válida pelo prazo '
+    'de 04 (quatro) anos, à COMPANHIA DE DESENVOLVIMENTO URBANO DO ESTADO DA BAHIA - '
+    'CONDER, inscrita no CNPJ nº 13.595.251/0001-08, com sede na Avenida Edgard '
+    'Santos, s/n, Narandiba, no município de Salvador, para intervenções integradas '
+    'para o manejo de águas pluviais, nas Bacias Hidrográficas dos Rios Joanes e '
+    'Ipitanga, no Reservatório de Amortecimento 1, no Rio Ipitanga, no entorno das '
+    'coordenadas Lat.12º54’04.5”S e Long.38°22’21”W, para margem esquerda e '
+    'Lat.12°54’12.1”S e Long.38°22’16.2”W para margem direita, para fins de '
+    'construção de barragem, com volume máximo armazenado de 22.863 m³ e vazão mínima '
+    'para jusante de 14,6 m³/s; no Reservatório de Amortecimento 5, no Riacho da '
+    'Areia, no entorno das coordenadas Lat.12°53’19.9”S e Long.38°21’26.2”W para '
+    'margem esquerda e Lat.12°53’22”S e Long.38°21’32.1”W para margem direita, para '
+    'fins de construção de barragem, com volume máximo armazenado de 560.662,6 m³ e '
+    'vazão mínima para jusante de 6,7 m³/s; no Canal Caji da Urbis, no afluente sem '
+    'nome do Rio Ipitanga, no entorno das coordenadas Lat.12°52"44.9"S e '
+    'Long.38°19’49.1"W para início da intervenção e Lat.12°53’28.5"S e '
+    'Long.38°19’23.8"W para fim da intervenção, para fins de canalização; no Canal '
+    'Jardim dos Pássaros, no afluente sem nome do Rio Ipitanga, no entorno das '
+    'coordenadas Lat.12°54’02"S e Long.38°20’21.5"W para início da intervenção e '
+    'Lat.12°54’01.4"S e Long.38°19’49.1"W para fim da intervenção, para fins de '
+    'canalização; no Ponto 1, no Rio Ipitanga, no entorno das coordenadas '
+    'Lat.12°53’21.4"S e Long.38°19’14.8"W para início da intervenção e '
+    'Lat.12°51’03.7"S e Long.38°18’44"W para fim da intervenção, para fins de '
+    'desassoreamento da calha do rio, datum das coordenadas SIRGAS 2000, localizado '
+    'nos municípios de Lauro de Freitas e Salvador,',
+)
+
+
 def test_ampliacao_com_processo_relacionado_e_prazo_de_outra_portaria():
     outorga = unica(AMPLIACAO_15749)
     assert outorga.natureza == 'ampliacao'
@@ -1066,3 +1102,77 @@ def test_classificar_intervencao(texto, tipo):
 def test_parametro_sem_numero_nao_tem_valor_numerico():
     parametro = ParametroEfluente(nome='DBO', valor='ausente', unidade='mg/L')
     assert parametro.valor_numero is None
+
+
+def test_modo_e_o_primeiro_campo_de_cada_uso():
+    """O modelo gera na ordem do esquema: resposta cortada ainda tem o discriminador."""
+    esquema = ExtracaoOutorga.model_json_schema()['$defs']
+    for uso in ('UsoCaptacao', 'UsoLancamento', 'UsoIntervencao'):
+        assert next(iter(esquema[uso]['properties'])) == 'modo'
+
+
+def test_finalidades_e_metodos_tem_limite_no_esquema():
+    propriedades = ExtracaoOutorga.model_json_schema()['$defs']['UsoCaptacao'][
+        'properties'
+    ]
+    assert propriedades['finalidades']['maxItems'] == len(FINALIDADES)
+    assert propriedades['metodos_irrigacao']['maxItems'] == len(METODOS_IRRIGACAO)
+
+
+def test_finalidades_e_metodos_repetidos_viram_um():
+    """Laço do modelo no ato 14706: as repetições não passam do limite do campo."""
+    dados = extrair_pela_regex(LANCAMENTO_24493).model_dump()
+    uso = dados['outorgas'][0]['usos'][0]
+    uso['finalidades'] = ['abastecimento_humano', 'abastecimento_industrial'] * 50
+    uso['metodos_irrigacao'] = ['gotejamento'] * 20
+    uso = ExtracaoOutorga.model_validate(dados).outorgas[0].usos[0]
+    assert uso.finalidades == ['abastecimento_humano', 'abastecimento_industrial']
+    assert uso.metodos_irrigacao == ['gotejamento']
+
+
+def test_intervencoes_no_plural_e_bacias_no_plural():
+    outorga = unica(INTERVENCOES_INTEGRADAS_5557)
+    usos = outorga.usos
+    assert [uso.modo for uso in usos] == ['intervencao'] * 5
+    # O tipo vem da finalidade: "Riacho da Areia" não é extração de areia.
+    assert [uso.tipo_intervencao for uso in usos] == [
+        'construcao_barramento',
+        'construcao_barramento',
+        'canalizacao',
+        'canalizacao',
+        'extracao_mineral_dragagem',
+    ]
+    assert {uso.bacia_hidrografica for uso in usos} == {'Rios Joanes e Ipitanga'}
+    # Cada canal fica com o par de início e o de fim, mesmo com o par malformado.
+    assert [len(uso.pontos) for uso in usos] == [2] * 5
+    caji = usos[2]
+    assert caji.pontos[0].coordenada.latitude == '12°52"44.9"S'
+    assert caji.pontos[1].coordenada.latitude == '12°53’28.5"S'
+    assert usos[1].volume_maximo_acumulacao_m3 == 560_662.6
+    assert usos[1].vazao_minima_jusante_m3_s == 6.7
+    # Sem vazão nem horas por dia cobradas: o modelo não é chamado.
+    assert campos_vazios(extrair_pela_regex(INTERVENCOES_INTEGRADAS_5557)) == []
+
+
+@pytest.mark.parametrize(
+    'trecho, bacia',
+    [
+        (
+            'nas Bacias Hidrográficas dos Rios Itanhém, Jucuruçu, Mucuri e Peruípe, '
+            'no Ponto B5',
+            'Rios Itanhém, Jucuruçu, Mucuri e Peruípe',
+        ),
+        (
+            'nas Bacias Hidrográficas do Riacho Doce e dos Rios Alcobaça, Mucuri, '
+            'Peruípe, no Ponto B2',
+            'Riacho Doce e dos Rios Alcobaça, Mucuri, Peruípe',
+        ),
+        # No singular a vírgula continua fechando a bacia.
+        ('na Bacia Hidrográfica do Rio de Contas, no Rio Gongoji', 'Rio de Contas'),
+    ],
+)
+def test_bacia_no_plural_e_uma_lista(trecho, bacia):
+    texto = INTERVENCOES_INTEGRADAS_5557.replace(
+        'nas Bacias Hidrográficas dos Rios Joanes e Ipitanga,', trecho + ','
+    )
+    assert unica(texto).usos[0].bacia_hidrografica == bacia

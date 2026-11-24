@@ -173,6 +173,7 @@ VARIANTES_MUNICIPIO = {
     'Carfanaum': 'Cafarnaum',
     'Senhor Bonfim': 'Senhor do Bonfim',
     'Vitória Conquista': 'Vitória da Conquista',
+    'Maragojipe': 'Maragogipe',
 }
 
 MUNICIPIO_POR_CHAVE = {_chave_municipio(nome): nome for nome in MUNICIPIOS_BA} | {

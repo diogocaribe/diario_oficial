@@ -151,8 +151,15 @@ class PontoUso(BaseModel):
 
 
 class UsoRecursoHidrico(BaseModel):
-    """Atributos comuns a qualquer uso autorizado pela portaria."""
+    """Atributos comuns a qualquer uso autorizado pela portaria.
 
+    ``modo`` é declarado aqui só para ser o primeiro campo do esquema: o modelo gera as
+    propriedades na ordem do esquema e, se a resposta for cortada no ``num_predict``, o
+    discriminador já saiu. Cada especialização o restringe ao seu ``Literal``, e o
+    Pydantic mantém o campo redefinido na posição da classe base.
+    """
+
+    modo: str
     prazo_validade_anos: int | None = Field(
         description='Prazo de validade em anos (ex.: "04 (quatro) anos" -> 4).'
     )
@@ -174,11 +181,16 @@ class UsoRecursoHidrico(BaseModel):
     finalidade_texto: str | None = Field(
         description='O que vem depois de "para fins de", como no texto.'
     )
+    # O limite vira ``maxItems`` na gramática do Ollama: com ``temperature=0`` e sem
+    # ``repeat_penalty``, o modelo pode repetir categorias até o ``num_predict`` (ato
+    # 14706). Repetidas são tiradas antes da conferência do tamanho.
     finalidades: list[Finalidade] = Field(
-        description='Categorias da finalidade (uma por uso citado).'
+        description='Categorias da finalidade (uma por uso citado), sem repetir.',
+        max_length=len(FINALIDADES),
     )
     metodos_irrigacao: list[MetodoIrrigacao] = Field(
-        description='Métodos de irrigação citados na finalidade.'
+        description='Métodos de irrigação citados na finalidade, sem repetir.',
+        max_length=len(METODOS_IRRIGACAO),
     )
     area_ha: float | None = Field(description='Área em hectares (ex.: "área 26 ha").')
     localidade: str | None = Field(
@@ -191,6 +203,13 @@ class UsoRecursoHidrico(BaseModel):
     @classmethod
     def _data_no_padrao(cls, valor: str | None) -> str | None:
         return normalizar_data(valor)
+
+    @field_validator('finalidades', 'metodos_irrigacao', mode='before')
+    @classmethod
+    def _sem_repetir(cls, valores: object) -> object:
+        if not isinstance(valores, list):
+            return valores
+        return list(dict.fromkeys(valores))
 
     @field_validator('municipios')
     @classmethod
